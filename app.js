@@ -1,74 +1,96 @@
 const people=[
-  {id:"chatgpt",name:"ChatGPT",mark:"C",role:"Reasoning & ideas",color:"#d6f6e9",ink:"#17654a"},
-  {id:"gemini",name:"Gemini",mark:"✦",role:"Research & synthesis",color:"#dce8ff",ink:"#315db2"},
-  {id:"deepseek",name:"DeepSeek",mark:"D",role:"Logic & problem-solving",color:"#d8eaff",ink:"#245d9b"},
-  {id:"meta",name:"Meta AI",mark:"∞",role:"Practical perspectives",color:"#d9e9ff",ink:"#245b9e"},
-  {id:"grok",name:"Grok",mark:"X",role:"Challenge & creativity",color:"#e5e7eb",ink:"#242832"}
+  {id:"chatgpt",name:"ChatGPT",mark:"C",role:"Not connected",color:"#d6f6e9",ink:"#17654a"},
+  {id:"gemini",name:"Gemini",mark:"✦",role:"Gemini API",color:"#dce8ff",ink:"#315db2"},
+  {id:"deepseek",name:"DeepSeek",mark:"D",role:"Not connected",color:"#d8eaff",ink:"#245d9b"},
+  {id:"meta",name:"Meta AI",mark:"∞",role:"Not connected",color:"#d9e9ff",ink:"#245b9e"},
+  {id:"grok",name:"Grok",mark:"X",role:"Not connected",color:"#e5e7eb",ink:"#242832"}
 ];
-const memberBox=document.querySelector("#members");
-const feed=document.querySelector("#feed");
-const form=document.querySelector("#form");
-const input=document.querySelector("#message");
-const send=document.querySelector("#send");
-let conversation=[];
-
-people.forEach(p=>{
-  const el=document.createElement("div");el.className="member";
-  const av=document.createElement("div");av.className="member-avatar";av.textContent=p.mark;av.style.background=p.color;av.style.color=p.ink;
-  const info=document.createElement("div");info.className="member-info";
-  const name=document.createElement("strong");name.textContent=p.name;
-  const role=document.createElement("small");role.textContent=p.role;
-  info.append(name,role);
-  const state=document.createElement("span");state.className="member-state demo";state.title="Demo participant";
-  el.append(av,info,state);memberBox.append(el);
-});
-function addMessage(name,text,isUser=false,person=null){
+const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send");
+let conversation=[], providerStatus={};
+function renderMembers(){
+  memberBox.innerHTML="";
+  people.forEach(p=>{
+    const connected=Boolean(providerStatus[p.id]);
+    const el=document.createElement("div");el.className="member";
+    const av=document.createElement("div");av.className="member-avatar";av.textContent=p.mark;av.style.background=p.color;av.style.color=p.ink;
+    const info=document.createElement("div");info.className="member-info";
+    const name=document.createElement("strong");name.textContent=p.name;
+    const role=document.createElement("small");role.textContent=connected?"Live connection":p.id==="gemini"?"Setup needed":"Not connected";
+    info.append(name,role);
+    const state=document.createElement("span");state.className="member-state"+(connected?" live":"");state.title=connected?"Connected":"Not connected";
+    el.append(av,info,state);memberBox.append(el);
+  });
+}
+async function loadStatus(){
+  try{
+    const r=await fetch("./api/status",{cache:"no-store"});
+    if(!r.ok)throw new Error("Backend is not deployed");
+    const data=await r.json();
+    providerStatus={};
+    (data.participants||[]).forEach(p=>providerStatus[p.id]=p.connected);
+    const chip=document.querySelector(".demo-chip");
+    const gemini=Boolean(providerStatus.gemini);
+    chip.innerHTML=gemini?"<i></i> GEMINI LIVE":"<i></i> API SETUP";
+    chip.classList.toggle("live",gemini);
+    renderMembers();
+  }catch{
+    document.querySelector(".demo-chip").innerHTML="<i></i> BACKEND SETUP";
+    renderMembers();
+  }
+}
+function addMessage(name,text,{user=false,live=false,person=null,system=false}={}){
   document.querySelector("#welcome")?.remove();
-  const card=document.createElement("article");card.className="message"+(isUser?" user":"");
+  const card=document.createElement("article");card.className="message"+(user?" user":"")+(system?" system":"");
   const head=document.createElement("div");head.className="message-head";
   const av=document.createElement("span");av.className="message-avatar";
-  av.textContent=isUser?"Y":person.mark;
-  av.style.background=isUser?"#e7c3a4":person.color;
-  av.style.color=isUser?"#38251d":person.ink;
-  const nm=document.createElement("span");nm.className="message-name";nm.textContent=name;
-  head.append(av,nm);
-  if(!isUser){const tag=document.createElement("span");tag.className="message-tag";tag.textContent="SIMULATED";head.append(tag);}
+  av.textContent=user?"Y":system?"!":person?.mark||"?";
+  av.style.background=user?"#e7c3a4":system?"#4a3440":person?.color||"#29334a";
+  av.style.color=user?"#38251d":system?"#ffd0d0":person?.ink||"#fff";
+  const nm=document.createElement("span");nm.className="message-name";nm.textContent=name;head.append(av,nm);
+  if(live){const tag=document.createElement("span");tag.className="message-tag live";tag.textContent="LIVE API";head.append(tag);}
   const body=document.createElement("div");body.className="message-body";body.textContent=text;
   card.append(head,body);feed.append(card);feed.scrollTop=feed.scrollHeight;
 }
-function makeReplies(message){
-  const lower=message.toLowerCase();
-  return [
-    [people[0],`I'd begin by clarifying the goal: “${message}” We can break it into smaller questions, compare the options, and decide what evidence would help.`],
-    [people[1],"A broader perspective may help here. What context, constraints, or longer-term effects should we include before settling on an answer?"],
-    [people[2],"Let's examine the assumptions and structure the problem. I would test the key claims one by one before choosing a solution."],
-    [people[3],"I'd keep the discussion grounded in practical outcomes. Let's identify who this affects, what success looks like, and the next useful action."],
-    [people[4],lower.includes("agree")?"I'm not convinced agreement should be the goal. Let's challenge the strongest assumption and see whether the argument holds up.":"Here's a counterpoint: what might we be overlooking? A useful discussion should make room for a competing explanation."]
-  ];
-}
 function showTyping(){
   const el=document.createElement("div");el.className="typing";el.id="typing";
-  el.innerHTML="<i></i><i></i><i></i><span>The council is thinking…</span>";
+  el.innerHTML="<i></i><i></i><i></i><span>Gemini is thinking…</span>";
   feed.append(el);feed.scrollTop=feed.scrollHeight;return el;
+}
+function getAccessCode(){
+  let code=sessionStorage.getItem("council_access_code");
+  if(!code){code=window.prompt("Enter your private AI Council access code (the code you set in Cloudflare):");if(code)sessionStorage.setItem("council_access_code",code);}
+  return code||"";
 }
 async function sendMessage(text){
   const message=text.trim();if(!message||send.disabled)return;
-  addMessage("You",message,true);
-  conversation.push({role:"user",content:message});
+  addMessage("You",message,{user:true});
   input.value="";input.style.height="auto";
   send.disabled=true;
   const typing=showTyping();
-  await new Promise(resolve=>setTimeout(resolve,650));
-  typing.remove();
-  const replies=makeReplies(message);
-  for(let i=0;i<replies.length;i++){
-    const [person,reply]=replies[i];
-    await new Promise(resolve=>setTimeout(resolve,180));
-    addMessage(person.name,reply,false,person);
-    conversation.push({role:"assistant",name:person.name,content:reply});
+  try{
+    const code=getAccessCode();
+    if(!code){typing.remove();addMessage("System","Your private access code is needed before sending messages.",{system:true});return;}
+    const response=await fetch("./api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-chatroom-code":code},
+      body:JSON.stringify({message,history:conversation.slice(-10)})
+    });
+    const data=await response.json().catch(()=>({}));
+    typing.remove();
+    if(response.status===401){sessionStorage.removeItem("council_access_code");addMessage("System","That access code was not accepted. Send again and enter the correct code.",{system:true});return;}
+    if(!response.ok)throw new Error(data.error||"The AI service could not respond.");
+    const reply=(data.replies||[]).find(item=>item.id==="gemini");
+    if(!reply)throw new Error("No live Gemini response was returned.");
+    const gemini=people.find(p=>p.id==="gemini");
+    addMessage("Gemini",reply.content,{live:true,person:gemini});
+    conversation.push({role:"user",content:message},{role:"model",content:reply.content});
+    conversation=conversation.slice(-10);
+  }catch(error){
+    typing.remove();
+    addMessage("Connection notice",error.message,{system:true});
+  }finally{
+    send.disabled=false;input.focus();
   }
-  conversation=conversation.slice(-24);
-  send.disabled=false;input.focus();
 }
 form.addEventListener("submit",e=>{e.preventDefault();sendMessage(input.value)});
 input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit()}});
@@ -80,3 +102,4 @@ function clearChat(){
 }
 document.querySelector("#clear").addEventListener("click",clearChat);
 document.querySelector("#new-chat").addEventListener("click",clearChat);
+loadStatus();
