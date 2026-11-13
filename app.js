@@ -8,7 +8,7 @@ const people=[
 const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send");
 let conversation=[],providerStatus={};
 let selectedProviders=JSON.parse(localStorage.getItem("council_providers")||'["gemini"]');
-selectedProviders=selectedProviders.filter(id=>id==="gemini"||id==="deepseek");
+selectedProviders=["gemini"];
 if(!selectedProviders.length)selectedProviders=["gemini"];
 function renderMembers(){
   memberBox.innerHTML="";
@@ -33,7 +33,6 @@ async function loadStatus(){
     providerStatus={};
     (data.participants||[]).forEach(p=>providerStatus[p.id]=p);
     if(!providerStatus.gemini?.configured)selectedProviders=selectedProviders.filter(id=>id!=="gemini");
-    if(!providerStatus.deepseek?.configured)selectedProviders=selectedProviders.filter(id=>id!=="deepseek");
     if(!selectedProviders.length&&providerStatus.gemini?.configured)selectedProviders=["gemini"];
     localStorage.setItem("council_providers",JSON.stringify(selectedProviders));
     const chip=document.querySelector(".demo-chip");
@@ -80,12 +79,10 @@ async function sendMessage(text){
   try{
     const code=getAccessCode();
     if(!code){typing.remove();addMessage("System","Your private access code is needed before sending messages.",{system:true});return;}
-    const providers=selectedProviders.filter(id=>providerStatus[id]?.configured);
-    if(!providers.length)throw new Error("Open API Setup and enable a configured provider first.");
     const response=await fetch("./api/chat",{
       method:"POST",
       headers:{"Content-Type":"application/json","x-chatroom-code":code},
-      body:JSON.stringify({message,history:conversation.slice(-10),providers})
+      body:JSON.stringify({message,history:conversation.slice(-10)})
     });
     const data=await response.json().catch(()=>({}));
     typing.remove();
@@ -120,7 +117,7 @@ function openApiSetup(){
     });
   }
   const list=modal.querySelector("#setup-providers");list.innerHTML="";
-  ["gemini","deepseek"].forEach(id=>{
+  ["gemini"].forEach(id=>{
     const person=people.find(p=>p.id===id),status=providerStatus[id]||{},configured=Boolean(status.configured);
     const label=document.createElement("label");label.className="setup-provider";
     const inputEl=document.createElement("input");inputEl.type="checkbox";inputEl.name="provider";inputEl.value=id;inputEl.checked=configured&&selectedProviders.includes(id);inputEl.disabled=!configured;
