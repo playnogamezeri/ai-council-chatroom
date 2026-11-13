@@ -8,7 +8,8 @@ const people=[
 const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send");
 let conversation=[],providerStatus={};
 let selectedProviders=JSON.parse(localStorage.getItem("council_providers")||'["gemini"]');
-selectedProviders=["gemini"];
+selectedProviders=selectedProviders.filter(id=>id==="gemini"||id==="deepseek");
+if(!selectedProviders.length)selectedProviders=["gemini"];
 if(!selectedProviders.length)selectedProviders=["gemini"];
 function renderMembers(){
   memberBox.innerHTML="";
@@ -32,8 +33,11 @@ async function loadStatus(){
     const data=await r.json();
     providerStatus={};
     (data.participants||[]).forEach(p=>providerStatus[p.id]=p);
-    if(!providerStatus.gemini?.configured)selectedProviders=selectedProviders.filter(id=>id!=="gemini");
-    if(!selectedProviders.length&&providerStatus.gemini?.configured)selectedProviders=["gemini"];
+    selectedProviders=selectedProviders.filter(id=>providerStatus[id]?.configured);
+    if(!selectedProviders.length){
+      if(providerStatus.gemini?.configured)selectedProviders.push("gemini");
+      if(providerStatus.deepseek?.configured)selectedProviders.push("deepseek");
+    }
     localStorage.setItem("council_providers",JSON.stringify(selectedProviders));
     const chip=document.querySelector(".demo-chip");
     const activeNames=selectedProviders.map(id=>people.find(p=>p.id===id)?.name).filter(Boolean);
@@ -82,7 +86,7 @@ async function sendMessage(text){
     const response=await fetch("./api/chat",{
       method:"POST",
       headers:{"Content-Type":"application/json","x-chatroom-code":code},
-      body:JSON.stringify({message,history:conversation.slice(-10)})
+      body:JSON.stringify({message,history:conversation.slice(-10),providers:selectedProviders})
     });
     const data=await response.json().catch(()=>({}));
     typing.remove();
@@ -106,7 +110,7 @@ function openApiSetup(){
   let modal=document.querySelector("#api-setup-modal");
   if(!modal){
     modal=document.createElement("div");modal.id="api-setup-modal";modal.className="setup-backdrop";
-    modal.innerHTML='<section class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title"><div class="setup-head"><div><div class="eyebrow">COUNCIL CONNECTIONS</div><h2 id="setup-title">API Setup</h2></div><button class="setup-close" type="button" aria-label="Close">×</button></div><p class="setup-intro">Your API keys stay safely in Cloudflare. This page never asks you to paste a secret into the browser.</p><div id="setup-providers"></div><div class="setup-note" id="setup-note">Gemini is selected by default. DeepSeek replies are off until you turn them on. API usage may incur charges according to your provider balance and pricing.</div><button class="setup-save" type="button">Save settings</button></section>';
+    modal.innerHTML='<section class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title"><div class="setup-head"><div><div class="eyebrow">COUNCIL CONNECTIONS</div><h2 id="setup-title">API Setup</h2></div><button class="setup-close" type="button" aria-label="Close">×</button></div><p class="setup-intro">Your API keys stay safely in Cloudflare. This page never asks you to paste a secret into the browser.</p><div id="setup-providers"></div><div class="setup-note" id="setup-note">Select the connected providers you want replying. DeepSeek API usage is billed by DeepSeek; check your balance and current rates before sending messages.</div><button class="setup-save" type="button">Save settings</button></section>';
     document.body.append(modal);
     modal.querySelector(".setup-close").addEventListener("click",()=>modal.remove());
     modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
@@ -117,15 +121,15 @@ function openApiSetup(){
     });
   }
   const list=modal.querySelector("#setup-providers");list.innerHTML="";
-  ["gemini"].forEach(id=>{
+  ["gemini","deepseek"].forEach(id=>{
     const person=people.find(p=>p.id===id),status=providerStatus[id]||{},configured=Boolean(status.configured);
     const label=document.createElement("label");label.className="setup-provider";
     const inputEl=document.createElement("input");inputEl.type="checkbox";inputEl.name="provider";inputEl.value=id;inputEl.checked=configured&&selectedProviders.includes(id);inputEl.disabled=!configured;
     const copy=document.createElement("span");copy.className="setup-provider-copy";
     const title=document.createElement("strong");title.textContent=person.name;
-    const sub=document.createElement("small");sub.textContent=configured?(id==="deepseek"?"Key stored in Cloudflare · usage is optional":"Key stored in Cloudflare"):"Not configured · add "+(id==="gemini"?"GEMINI_API_KEY":"DEEPSEEK_API_KEY")+" in Cloudflare";
+    const sub=document.createElement("small");sub.textContent=configured?(status.connected?"Key stored in Cloudflare · ready":"Key stored · check access code"):"Not configured · add "+(id==="gemini"?"GEMINI_API_KEY":"DEEPSEEK_API_KEY")+" in Cloudflare";
     copy.append(title,sub);
-    const state=document.createElement("span");state.className="setup-state"+(configured?" ready":"");state.textContent=configured?"Configured":"Missing key";
+    const state=document.createElement("span");state.className="setup-state"+(configured?" ready":"");state.textContent=configured?(status.connected?"Ready":"Check setup"):"Missing key";
     label.append(inputEl,copy,state);list.append(label);
   });
   modal.hidden=false;
