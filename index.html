@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101426"><title>AI Council</title><link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="shell">
+<header><div class="logo">✦</div><div><h1>AI Council</h1><p>One room. Five perspectives.</p></div><span class="pill">ZERO-COST DEMO</span></header>
+<div class="layout">
+<aside class="side">
+  <h3>COUNCIL MEMBERS</h3>
+  <div id="members"></div>
+  <div class="note"><b>Demo mode</b><p>These are sample replies, not live responses from the named AI services. No API keys or paid AI requests are used.</p></div>
+</aside>
+<main class="chat">
+  <div class="chathead"><div><h2>Group conversation</h2><p id="status">Demo mode · no AI providers connected</p></div><button id="clear" class="secondary">Clear</button></div>
+  <section id="feed" class="feed"><div class="welcome"><div class="star">✦</div><h2>Welcome to your AI Council</h2><p>Send a message to see how the group-chat interface works.</p></div></section>
+  <form id="form" class="composer"><textarea id="message" maxlength="2000" rows="2" placeholder="Message the group…" required></textarea><div class="composefoot"><small>Demo only · no API charges</small><button id="send">Send to group ➤</button></div></form>
+  <p class="footnote">Demo participants are fictional simulations. Real provider integrations are not active.</p>
+</main>
+</div></div>
+<script src="/app.js"></script>
+</body></html>
