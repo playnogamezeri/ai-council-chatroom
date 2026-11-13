@@ -34,6 +34,37 @@ async function askGemini(env, message, history) {
   return { id: "gemini", name: "Gemini", status: "ok", content };
 }
 
+async function askDeepSeek(env, message, history) {
+  const model = env.DEEPSEEK_MODEL || "deepseek-flash";
+  const messages = [
+    { role: "system", content: systemPrompt("DeepSeek") },
+    ...history.map(item => ({
+      role: item.role === "model" || item.role === "assistant" ? "assistant" : "user",
+      content: typeof item.content === "string" ? item.content.slice(0, 2000) : ""
+    })).filter(item => item.content),
+    { role: "user", content: message }
+  ];
+  const upstream = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "authorization": `Bearer ${env.DEEPSEEK_API_KEY}`
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      thinking: { type: "disabled" },
+      temperature: 0.7,
+      max_tokens: 700,
+      stream: false
+    })
+  });
+  const result = await upstream.json();
+  if (!upstream.ok) throw new Error(result?.error?.message || "DeepSeek API request failed.");
+  const content = result?.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error("DeepSeek returned an empty response.");
+  return { id: "deepseek", name: "DeepSeek", status: "ok", content };
+}
 
 export async function onRequestPost({ request, env }) {
   if (!env.CHATROOM_ACCESS_CODE) {
@@ -53,8 +84,22 @@ export async function onRequestPost({ request, env }) {
   if (message.length > 2000) return json({ error: "Messages are limited to 2,000 characters." }, 400);
 
   const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
-  if (!env.GEMINI_API_KEY) return json({ error: "Gemini API key is not configured." }, 503);
-  const results = await Promise.all([askGemini(env, message, history).catch(error => ({ id: "gemini", name: "Gemini", error: error.message }))]);
+  const requested = Array.isArray(body.providers) ? body.providers : ["gemini"];
+  const providers = [...new Set(requested)].filter(id => id === "gemini" || id === "deepseek");
+  if (!providers.length) return json({ error: "Select at least one connected AI provider in API Setup." }, 400);
+
+  const jobs = [];
+  for (const id of providers) {
+    if (id === "gemini") {
+      if (!env.GEMINI_API_KEY) jobs.push(Promise.resolve({ id, name: "Gemini", error: "GEMINI_API_KEY is not configured in Cloudflare." }));
+      else jobs.push(askGemini(env, message, history).catch(error => ({ id, name: "Gemini", error: error.message })));
+    }
+    if (id === "deepseek") {
+      if (!env.DEEPSEEK_API_KEY) jobs.push(Promise.resolve({ id, name: "DeepSeek", error: "DEEPSEEK_API_KEY is not configured in Cloudflare." }));
+      else jobs.push(askDeepSeek(env, message, history).catch(error => ({ id, name: "DeepSeek", error: error.message })));
+    }
+  }
+  const results = await Promise.all(jobs);
   const replies = results.filter(item => item.content);
   const errors = results.filter(item => item.error).map(({ id, name, error }) => ({ id, name, error }));
   if (!replies.length) return json({ error: errors.map(item => `${item.name}: ${item.error}`).join(" · ") || "No AI provider responded." }, 502);
