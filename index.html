@@ -1,24 +1,70 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#101426"><title>AI Council</title><link rel="stylesheet" href="/styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="AI Council — a shared room for five independent AI perspectives.">
+  <title>AI Council — Group Chat</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<div class="shell">
-<header><div class="logo">✦</div><div><h1>AI Council</h1><p>One room. Five perspectives.</p></div><span class="pill">ZERO-COST DEMO</span></header>
-<div class="layout">
-<aside class="side">
-  <h3>COUNCIL MEMBERS</h3>
-  <div id="members"></div>
-  <div class="note"><b>Demo mode</b><p>These are sample replies, not live responses from the named AI services. No API keys or paid AI requests are used.</p></div>
-</aside>
-<main class="chat">
-  <div class="chathead"><div><h2>Group conversation</h2><p id="status">Demo mode · no AI providers connected</p></div><button id="clear" class="secondary">Clear</button></div>
-  <section id="feed" class="feed"><div class="welcome"><div class="star">✦</div><h2>Welcome to your AI Council</h2><p>Send a message to see how the group-chat interface works.</p></div></section>
-  <form id="form" class="composer"><textarea id="message" maxlength="2000" rows="2" placeholder="Message the group…" required></textarea><div class="composefoot"><small>Demo only · no API charges</small><button id="send">Send to group ➤</button></div></form>
-  <p class="footnote">Demo participants are fictional simulations. Real provider integrations are not active.</p>
-</main>
-</div></div>
-<script src="/app.js"></script>
-</body></html>
+  <div class="app">
+    <aside class="rail">
+      <a class="brand" href="./" aria-label="AI Council home"><span class="brand-icon">✳</span><span>council</span></a>
+      <button class="rail-button active" title="Group chat" aria-label="Group chat">▤</button>
+      <button class="rail-button" title="Members" aria-label="Members" onclick="document.querySelector('#members-panel').scrollIntoView({behavior:'smooth'})">♙</button>
+      <div class="rail-spacer"></div>
+      <div class="you-avatar" title="You">Y</div>
+    </aside>
+
+    <aside class="members-panel" id="members-panel">
+      <div class="panel-heading">
+        <div><div class="eyebrow">YOUR WORKSPACE</div><h1>AI Council</h1></div>
+        <span class="status-dot" title="Demo is ready"></span>
+      </div>
+      <button class="new-chat" id="new-chat"><span>＋</span> New conversation</button>
+      <div class="section-title"><span>YOUR COUNCIL</span><span class="count">05</span></div>
+      <div id="members" class="members-list"></div>
+      <div class="panel-bottom">
+        <div class="mode-card">
+          <div class="mode-icon">✦</div>
+          <div><strong>Demo mode</strong><p>Sample replies only. No API usage or charges.</p></div>
+        </div>
+        <div class="user-row"><div class="you-avatar small">Y</div><div><strong>You</strong><small>Room owner</small></div><span class="more">•••</span></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-icon">✳</span><strong>AI Council</strong></div>
+        <div class="room-title"><span class="room-icon">▤</span><div><strong>General discussion</strong><small>Private room · 5 AI members</small></div></div>
+        <div class="top-actions"><span class="demo-chip"><i></i> DEMO</span><button class="icon-button" id="clear" title="Clear conversation" aria-label="Clear conversation">⌫</button></div>
+      </header>
+
+      <section class="conversation" id="feed" aria-live="polite">
+        <div class="welcome" id="welcome">
+          <div class="welcome-symbol">✳</div>
+          <div class="eyebrow">FIVE MINDS. ONE ROOM.</div>
+          <h2>Good conversations<br><span>start here.</span></h2>
+          <p>Bring a question, an idea, or a challenge. Your council is ready to explore it from different perspectives.</p>
+          <div class="suggestions">
+            <button class="suggestion" data-prompt="Help me plan a creative project from idea to launch."><span>✧</span><b>Plan a project</b><small>Turn an idea into a plan</small></button>
+            <button class="suggestion" data-prompt="Debate the benefits and risks of artificial intelligence."><span>⌁</span><b>Start a debate</b><small>Explore opposing viewpoints</small></button>
+            <button class="suggestion" data-prompt="Teach me something surprising about the universe."><span>◉</span><b>Learn something</b><small>Explore a new question</small></button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="composer-area">
+        <form class="composer" id="form">
+          <textarea id="message" rows="1" maxlength="2000" placeholder="Message the council…" aria-label="Message the council" required></textarea>
+          <div class="composer-tools"><div class="composer-hint"><span>↵</span> Enter to send <span class="hint-divider">·</span> Shift + Enter for a new line</div><button class="send-button" id="send" type="submit" aria-label="Send message"><span>Send</span><b>↑</b></button></div>
+        </form>
+        <div class="disclaimer">AI Council demo · Responses are simulated, not generated by the named AI services.</div>
+      </footer>
+    </main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
