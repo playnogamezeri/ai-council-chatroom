@@ -4,12 +4,14 @@ const json = (data) => new Response(JSON.stringify(data), {
 
 export async function onRequestGet({ env }) {
   const accessReady = Boolean(env.CHATROOM_ACCESS_CODE);
+  const geminiReady = Boolean(env.GEMINI_API_KEY && accessReady);
+  const deepseekReady = Boolean(env.DEEPSEEK_API_KEY && accessReady);
   return json({
     mode: "live-ready",
     participants: [
       { id: "chatgpt", name: "ChatGPT", configured: false, connected: false, note: "No API key configured" },
-      { id: "gemini", name: "Gemini", configured: Boolean(env.GEMINI_API_KEY && accessReady), connected: Boolean(env.GEMINI_API_KEY && accessReady), note: env.GEMINI_API_KEY ? "API key stored" : "Add GEMINI_API_KEY in Cloudflare" },
-      { id: "deepseek", name: "DeepSeek", configured: false, connected: false, note: "Not enabled · free provider setup pending" },
+      { id: "gemini", name: "Gemini", configured: Boolean(env.GEMINI_API_KEY), connected: geminiReady, note: env.GEMINI_API_KEY ? (accessReady ? "API key stored" : "Access code missing") : "Add GEMINI_API_KEY in Cloudflare" },
+      { id: "deepseek", name: "DeepSeek", configured: Boolean(env.DEEPSEEK_API_KEY), connected: deepseekReady, note: env.DEEPSEEK_API_KEY ? (accessReady ? "API key stored" : "Access code missing") : "Add DEEPSEEK_API_KEY in Cloudflare" },
       { id: "meta", name: "Meta AI", configured: false, connected: false, note: "No supported API configured" },
       { id: "grok", name: "Grok", configured: false, connected: false, note: "No API key configured" }
     ]
