@@ -113,3 +113,11 @@ h1{font:800 22px 'Manrope',sans-serif;margin:5px 0 0;letter-spacing:-.8px}
 
 /* Six-member council and provider setup refinements */
 @media(max-width:650px){.members-list{grid-template-columns:repeat(3,minmax(0,1fr));}.member{min-height:62px}.member-info small{display:block;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}}
+
+/* Council deliberation mode selector */
+.mode-select-wrap{display:flex;align-items:center;gap:8px;margin-right:auto;min-width:0}
+.mode-select-wrap>span{font-size:8px;letter-spacing:1px;font-weight:700;color:#8491a7;white-space:nowrap}
+.mode-select-wrap select{max-width:235px;border:1px solid #35415c;border-radius:9px;background:#172238;color:#e7eafa;padding:8px 10px;font:600 10px 'DM Sans',sans-serif;outline:none}
+.mode-select-wrap select:focus{border-color:#8e80df;box-shadow:0 0 0 2px #8e80df22}
+.message.system .message-name{letter-spacing:.8px;color:#c9bcff}
+@media(max-width:650px){.composer-tools{gap:8px;flex-wrap:wrap}.mode-select-wrap{order:0;width:100%;margin:0 0 5px}.mode-select-wrap select{flex:1;max-width:none}.composer-hint{order:1}.send-button{order:2}}
