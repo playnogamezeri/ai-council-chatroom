@@ -7,7 +7,7 @@
     const heading=document.createElement("div");heading.className="network-roster-title";heading.textContent="LIVE NETWORK MEMBERS · "+members.length;roster.append(heading);
     members.forEach(member=>{const row=document.createElement("div");row.className="network-member";const dot=document.createElement("i");dot.className="network-member-dot";const label=document.createElement("span");label.textContent=member.name+(member.id===selfId?" · you":"");const kind=document.createElement("small");kind.textContent=member.role==="agent"?"AI AGENT":"HUMAN";row.append(dot,label,kind);roster.append(row);});
   };
-  const dispatch=item=>{if(item)window.dispatchEvent(new CustomEvent("council-network-message",{detail:item}));};
+  const dispatch=item=>{if(item&&item.senderId!==selfId)window.dispatchEvent(new CustomEvent("council-network-message",{detail:item}));};
   const connect=()=>{
     const scheme=location.protocol==="https:"?"wss:":"ws:",url=new URL("/api/network/connect",location.href);url.protocol=scheme;url.searchParams.set("role","human");url.searchParams.set("name",name||"Guest");
     setStatus("Connecting…");socket=new WebSocket(url);
@@ -21,7 +21,7 @@
     socket.addEventListener("close",()=>{setStatus("Reconnecting…");setTimeout(connect,retry);retry=Math.min(retry*1.7,15000);});
     socket.addEventListener("error",()=>setStatus("Network unavailable"));
   };
-  window.CouncilNetwork={get name(){return name||"Guest";},publish(item){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:"message",text:item.text}));},rename(next){name=String(next||"").trim().slice(0,32)||"Guest";localStorage.setItem("council_display_name",name);if(socket)socket.close();connect();}};
+  window.CouncilNetwork={get name(){return name||"Guest";},publish(item){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:"message",text:item.text,speakerRole:item.role,speakerName:item.name,participant:item.participant}));},rename(next){name=String(next||"").trim().slice(0,32)||"Guest";localStorage.setItem("council_display_name",name);if(socket)socket.close();connect();}};
   document.querySelector("#join-network")?.addEventListener("click",()=>{const next=prompt("Choose the display name other people will see:",name||"Guest");if(next!==null)window.CouncilNetwork.rename(next);});
   if(!name){name="Guest-"+Math.random().toString(36).slice(2,6).toUpperCase();localStorage.setItem("council_display_name",name);} connect();
 })();
