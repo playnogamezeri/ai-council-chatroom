@@ -22,7 +22,7 @@ In the Cloudflare dashboard, open the Pages project connected to this repository
 - \`CHATROOM_ACCESS_CODE\` — a private room access code.
 - One or more provider API keys from the table above.
 
-Optional model variables can override the defaults in \`functions/api/chat.js\`. Model availability and names can change; use the model identifier currently enabled for your provider account.
+Optional model variables can override the defaults in `functions/api/chat.js`. Current defaults include `deepseek-flash` for DeepSeek and `grok-4.7` for xAI. Check the provider's model list and your account access if you override a model. \`functions/api/chat.js\`. Model availability and names can change; use the model identifier currently enabled for your provider account.
 
 After saving secrets, redeploy the Pages project if Cloudflare does not automatically apply the updated environment. Open **Connect AIs** in the room and select the configured participants.
 
