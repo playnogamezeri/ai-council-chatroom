@@ -6,7 +6,9 @@ const people = [
   {id:"grok",name:"Grok",mark:"X",color:"#e5e7eb",ink:"#242832",role:"xAI"},
   {id:"llama",name:"Llama",mark:"∞",color:"#d9e9ff",ink:"#245b9e",role:"Meta model via Groq"}
 ];
-const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send");
+const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send"),modeSelect=document.querySelector("#council-mode");
+modeSelect.value=localStorage.getItem("council_mode")==="deliberation"?"deliberation":"independent";
+modeSelect.addEventListener("change",()=>localStorage.setItem("council_mode",modeSelect.value));
 let roomHistory=[],providerStatus={};
 let selectedProviders=JSON.parse(localStorage.getItem("council_providers")||"[]");
 selectedProviders=selectedProviders.filter(id=>people.some(person=>person.id===id));
@@ -75,21 +77,33 @@ async function sendMessage(rawText){
     const code=getAccessCode();
     if(!code){typing.remove();addMessage("System","Your private access code is needed before contacting the council.",{system:true});return;}
     if(!selectedProviders.length){typing.remove();addMessage("System","Open Connect AIs and select at least one provider with an API key configured.",{system:true});return;}
+    const councilMode=modeSelect.value;
+    if(councilMode==="deliberation"&&selectedProviders.length<2){typing.remove();addMessage("System","AI-to-AI deliberation needs at least two connected participants. Select another AI or switch to Independent replies.",{system:true});return;}
     const response=await fetch("./api/chat",{
       method:"POST",headers:{"Content-Type":"application/json","x-chatroom-code":code},
-      body:JSON.stringify({message,history:roomHistory.slice(-12),providers:selectedProviders})
+      body:JSON.stringify({message,history:roomHistory.slice(-12),providers:selectedProviders,mode:councilMode})
     });
     const data=await response.json().catch(()=>({}));
     typing.remove();
     if(response.status===401){sessionStorage.removeItem("council_access_code");addMessage("System","That access code was not accepted. Send again to enter the correct code.",{system:true});return;}
     if(!response.ok)throw new Error(data.error||"The council could not respond.");
     roomHistory.push({role:"user",content:message});
+    if(councilMode==="deliberation")addMessage("COUNCIL · ROUND 1","Independent opening positions",{system:true});
     (data.replies||[]).forEach(reply=>{
       const person=people.find(item=>item.id===reply.id);
-      addMessage(reply.name,reply.content,{live:true,person});
-      roomHistory.push({role:"assistant",content:"["+reply.name+"] "+reply.content});
+      addMessage(councilMode==="deliberation"?reply.name+" · Opening position":reply.name,reply.content,{live:true,person});
+      roomHistory.push({role:"assistant",content:"["+reply.name+" · opening position] "+reply.content});
     });
     (data.errors||[]).forEach(item=>addMessage(item.name+" connection notice",item.error,{system:true}));
+    if(councilMode==="deliberation"){
+      addMessage("COUNCIL · ROUND 2","Participants have reviewed the other opening positions. Disagreement is preserved; no consensus is forced.",{system:true});
+      (data.deliberations||[]).forEach(reply=>{
+        const person=people.find(item=>item.id===reply.id);
+        addMessage(reply.name+" · Peer review",reply.content,{live:true,person});
+        roomHistory.push({role:"assistant",content:"["+reply.name+" · peer review] "+reply.content});
+      });
+      (data.deliberationErrors||[]).forEach(item=>addMessage(item.name+" review notice",item.error,{system:true}));
+    }
     roomHistory=roomHistory.slice(-12);
   }catch(error){typing.remove();addMessage("Connection notice",error.message,{system:true});}
   finally{send.disabled=false;input.focus();}
