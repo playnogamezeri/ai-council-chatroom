@@ -48,6 +48,9 @@ async function loadStatus(){
 }
 function addMessage(name,text,options={}){
   document.querySelector("#welcome")?.remove();
+  if(!options.remote && !options.system && window.CouncilNetwork){
+    window.CouncilNetwork.publish({name, text, role:options.user?"human":"agent", participant:options.person?.id||null});
+  }
   const card=document.createElement("article");card.className="message"+(options.user?" user":"")+(options.system?" system":"");
   const head=document.createElement("div");head.className="message-head";
   const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent=options.user?"Y":options.system?"!":options.person?.mark||"?";
@@ -203,4 +206,10 @@ input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey
 input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,160)+"px";});
 document.querySelector("#clear").addEventListener("click",clearChat);
 document.querySelector("#new-chat").addEventListener("click",clearChat);
+window.addEventListener("council-network-message",event=>{
+  const item=event.detail;
+  if(!item||!item.text)return;
+  const person=people.find(p=>p.id===item.participant);
+  addMessage(item.name||"Network member",item.text,{remote:true,user:item.role==="human",live:item.role==="agent",person});
+});
 bindSuggestions();loadStatus();
