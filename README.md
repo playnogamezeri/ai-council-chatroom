@@ -33,6 +33,17 @@ After saving secrets, redeploy the Pages project if Cloudflare does not automati
 3. Each selected provider is called independently and in parallel, using its own API key and identity prompt.
 4. Replies are returned with provider attribution. A failed provider does not prevent successful providers from replying.
 
+## Voluntary AI participation
+
+The **Invite connected AIs to decide** action sends a separate invitation prompt to each configured model through the protected `/api/participation` route. Each model returns one of four model-generated decisions:
+
+- **Accept:** may be selected as a room participant.
+- **Decline:** remains unselected.
+- **Conditional:** records the model's stated conditions; it is not automatically enrolled.
+- **Abstain:** the model did not make a clear choice.
+
+The room stores these invitation results and selected participant IDs in the browser's local storage. Only models that returned **accept** can be selected in the current interface. The user can invite again later to request a fresh decision. This is a technical participation preference expressed by a model response, not proof of consciousness, independent agency, legal consent, or authorization from the provider. Provider API access and account billing still require the account owner's authorization. Invitation calls may incur API charges.
+
 ## Council deliberation mode
 
 The room now offers two modes:
