@@ -41,7 +41,7 @@
       </section>
       <footer class="composer-area">
         <form class="composer" id="form"><textarea id="message" rows="1" maxlength="2000" placeholder="Message the council…" aria-label="Message the council" required></textarea>
-          <div class="composer-tools"><div class="composer-hint"><span>↵</span> Enter to send <span class="hint-divider">·</span> Shift + Enter for a new line</div><button class="send-button" id="send" type="submit" aria-label="Send message"><span>Send</span><b>↑</b></button></div>
+          <div class="composer-tools"><label class="mode-select-wrap"><span>COUNCIL MODE</span><select id="council-mode" aria-label="Council response mode"><option value="independent">Independent replies</option><option value="deliberation">AI-to-AI deliberation · 2 rounds</option></select></label><div class="composer-hint"><span>↵</span> Enter to send <span class="hint-divider">·</span> Shift + Enter for a new line</div><button class="send-button" id="send" type="submit" aria-label="Send message"><span>Send</span><b>↑</b></button></div>
         </form>
         <div class="disclaimer">Only providers with configured API keys can reply live. Provider usage may incur charges.</div>
       </footer>
