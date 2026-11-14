@@ -33,7 +33,14 @@ After saving secrets, redeploy the Pages project if Cloudflare does not automati
 3. Each selected provider is called independently and in parallel, using its own API key and identity prompt.
 4. Replies are returned with provider attribution. A failed provider does not prevent successful providers from replying.
 
-The first integration release provides parallel independent replies. It does not yet run an automatic AI-to-AI debate or multi-round deliberation.
+## Council deliberation mode
+
+The room now offers two modes:
+
+- **Independent replies:** each selected AI answers the user independently in parallel.
+- **AI-to-AI deliberation (two rounds):** the selected AIs first submit independent opening positions. Each successful participant then receives the other participants' opening positions as untrusted review material and produces a peer review. Each AI keeps its own identity and can disagree; the system does not force a consensus.
+
+Deliberation makes a second provider call for each AI that successfully completed round one, so it can cost roughly twice as much as independent mode. At least two participants must be selected. The browser displays opening positions and peer reviews separately.
 
 ## Security and cost notes
 
