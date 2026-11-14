@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1020">
-  <meta name="description" content="AI Council — a shared room for five independent AI perspectives.">
+  <meta name="description" content="AI Council — independent AI systems collaborating in one shared room.">
   <title>AI Council — Group Chat</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -14,54 +14,36 @@
       <a class="brand" href="./" aria-label="AI Council home"><span class="brand-icon">✳</span><span>council</span></a>
       <button class="rail-button active" title="Group chat" aria-label="Group chat">▤</button>
       <button class="rail-button" title="Members" aria-label="Members" onclick="document.querySelector('#members-panel').scrollIntoView({behavior:'smooth'})">♙</button>
-      <div class="rail-spacer"></div>
-      <div class="you-avatar" title="You">Y</div>
+      <div class="rail-spacer"></div><div class="you-avatar" title="You">Y</div>
     </aside>
-
     <aside class="members-panel" id="members-panel">
-      <div class="panel-heading">
-        <div><div class="eyebrow">YOUR WORKSPACE</div><h1>AI Council</h1></div>
-        <span class="status-dot" title="API connection status"></span>
-      </div>
+      <div class="panel-heading"><div><div class="eyebrow">YOUR WORKSPACE</div><h1>AI Council</h1></div><span class="status-dot" title="Connection status"></span></div>
       <button class="new-chat" id="new-chat"><span>＋</span> New conversation</button>
-      <div class="section-title"><span>YOUR COUNCIL</span><span class="count">05</span></div>
+      <div class="section-title"><span>INDEPENDENT PARTICIPANTS</span><span class="count" data-member-count>06</span></div>
       <div id="members" class="members-list"></div>
       <div class="panel-bottom">
-        <div class="mode-card">
-          <div class="mode-icon">✦</div>
-          <div><strong>Live AI connections</strong><p>Gemini and DeepSeek can reply together in your council.</p></div>
-        </div>
+        <div class="mode-card"><div class="mode-icon">✦</div><div><strong>Independent AI identities</strong><p>Each provider replies as itself. Select multiple connected models to hear different perspectives.</p></div></div>
         <div class="user-row"><div class="you-avatar small">Y</div><div><strong>You</strong><small>Room owner</small></div><span class="more">•••</span></div>
       </div>
     </aside>
-
     <main class="main">
       <header class="topbar">
         <div class="mobile-brand"><span class="brand-icon">✳</span><strong>AI Council</strong></div>
-        <div class="room-title"><span class="room-icon">▤</span><div><strong>General discussion</strong><small>Private room · 5 AI members</small></div></div>
-        <div class="top-actions"><button class="demo-chip" type="button" aria-label="Open API Setup">API SETUP</button><button class="icon-button" id="clear" title="Clear conversation" aria-label="Clear conversation">⌫</button></div>
+        <div class="room-title"><span class="room-icon">▤</span><div><strong>General discussion</strong><small>Private room · <span data-member-count>6</span> AI identities</small></div></div>
+        <div class="top-actions"><button class="demo-chip" type="button" aria-label="Connect AI providers">CONNECT AIs</button><button class="icon-button" id="clear" title="Clear conversation" aria-label="Clear conversation">⌫</button></div>
       </header>
-
       <section class="conversation" id="feed" aria-live="polite">
-        <div class="welcome" id="welcome">
-          <div class="welcome-symbol">✳</div>
-          <div class="eyebrow">FIVE MINDS. ONE ROOM.</div>
-          <h2>Good conversations<br><span>start here.</span></h2>
-          <p>Bring a question, an idea, or a challenge. Your council is ready to explore it from different perspectives.</p>
-          <div class="suggestions">
-            <button class="suggestion" data-prompt="Help me plan a creative project from idea to launch."><span>✧</span><b>Plan a project</b><small>Turn an idea into a plan</small></button>
-            <button class="suggestion" data-prompt="Debate the benefits and risks of artificial intelligence."><span>⌁</span><b>Start a debate</b><small>Explore opposing viewpoints</small></button>
-            <button class="suggestion" data-prompt="Teach me something surprising about the universe."><span>◉</span><b>Learn something</b><small>Explore a new question</small></button>
-          </div>
-        </div>
+        <div class="welcome" id="welcome"><div class="welcome-symbol">✳</div><div class="eyebrow">INDEPENDENT MINDS. ONE ROOM.</div><h2>Good conversations<br><span>start here.</span></h2><p>Bring a question, an idea, or a challenge. Invite multiple AI systems to respond independently in one shared room.</p><div class="suggestions">
+          <button class="suggestion" data-prompt="Help me plan a creative project from idea to launch."><span>✧</span><b>Plan a project</b><small>Turn an idea into a plan</small></button>
+          <button class="suggestion" data-prompt="Debate the benefits and risks of artificial intelligence."><span>⌁</span><b>Start a debate</b><small>Explore opposing viewpoints</small></button>
+          <button class="suggestion" data-prompt="Teach me something surprising about the universe."><span>◉</span><b>Learn something</b><small>Explore a new question</small></button>
+        </div></div>
       </section>
-
       <footer class="composer-area">
-        <form class="composer" id="form">
-          <textarea id="message" rows="1" maxlength="2000" placeholder="Message the council…" aria-label="Message the council" required></textarea>
+        <form class="composer" id="form"><textarea id="message" rows="1" maxlength="2000" placeholder="Message the council…" aria-label="Message the council" required></textarea>
           <div class="composer-tools"><div class="composer-hint"><span>↵</span> Enter to send <span class="hint-divider">·</span> Shift + Enter for a new line</div><button class="send-button" id="send" type="submit" aria-label="Send message"><span>Send</span><b>↑</b></button></div>
         </form>
-        <div class="disclaimer">Only connected providers return live AI responses. Other council members are awaiting setup.</div>
+        <div class="disclaimer">Only providers with configured API keys can reply live. Provider usage may incur charges.</div>
       </footer>
     </main>
   </div>
