@@ -1,149 +1,135 @@
-const people=[
-  {id:"chatgpt",name:"ChatGPT",mark:"C",color:"#d6f6e9",ink:"#17654a"},
-  {id:"gemini",name:"Gemini",mark:"✦",color:"#dce8ff",ink:"#315db2"},
-  {id:"deepseek",name:"DeepSeek",mark:"D",color:"#d8eaff",ink:"#245d9b"},
-  {id:"meta",name:"Meta AI",mark:"∞",color:"#d9e9ff",ink:"#245b9e"},
-  {id:"grok",name:"Grok",mark:"X",color:"#e5e7eb",ink:"#242832"}
+const people = [
+  {id:"openai",name:"ChatGPT",mark:"C",color:"#d6f6e9",ink:"#17654a",role:"OpenAI"},
+  {id:"gemini",name:"Gemini",mark:"✦",color:"#dce8ff",ink:"#315db2",role:"Google"},
+  {id:"deepseek",name:"DeepSeek",mark:"D",color:"#d8eaff",ink:"#245d9b",role:"DeepSeek"},
+  {id:"claude",name:"Claude",mark:"A",color:"#f4dfd2",ink:"#8a4d2e",role:"Anthropic"},
+  {id:"grok",name:"Grok",mark:"X",color:"#e5e7eb",ink:"#242832",role:"xAI"},
+  {id:"llama",name:"Llama",mark:"∞",color:"#d9e9ff",ink:"#245b9e",role:"Meta model via Groq"}
 ];
 const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send");
-let conversation=[],providerStatus={};
-let selectedProviders=JSON.parse(localStorage.getItem("council_providers")||'["gemini"]');
-selectedProviders=selectedProviders.filter(id=>id==="gemini"||id==="deepseek");
-if(!selectedProviders.length)selectedProviders=["gemini"];
-if(!selectedProviders.length)selectedProviders=["gemini"];
+let roomHistory=[],providerStatus={};
+let selectedProviders=JSON.parse(localStorage.getItem("council_providers")||"[]");
+selectedProviders=selectedProviders.filter(id=>people.some(person=>person.id===id));
 function renderMembers(){
-  memberBox.innerHTML="";
-  people.forEach(p=>{
-    const configured=Boolean(providerStatus[p.id]?.configured);
-    const active=selectedProviders.includes(p.id);
+  memberBox.replaceChildren();
+  people.forEach(person=>{
+    const status=providerStatus[person.id]||{},configured=Boolean(status.configured),active=selectedProviders.includes(person.id);
     const el=document.createElement("div");el.className="member";
-    const av=document.createElement("div");av.className="member-avatar";av.textContent=p.mark;av.style.background=p.color;av.style.color=p.ink;
+    const avatar=document.createElement("div");avatar.className="member-avatar";avatar.textContent=person.mark;avatar.style.background=person.color;avatar.style.color=person.ink;
     const info=document.createElement("div");info.className="member-info";
-    const name=document.createElement("strong");name.textContent=p.name;
-    const role=document.createElement("small");role.textContent=configured?(active?"Ready for replies":"Connected · off"):"Not connected";
+    const name=document.createElement("strong");name.textContent=person.name;
+    const role=document.createElement("small");role.textContent=configured?(active?"Selected · "+person.role:"Connected · "+person.role):"Not connected · "+person.role;
     info.append(name,role);
-    const state=document.createElement("span");state.className="member-state"+(configured&&active?" live":"");state.title=configured?(active?"Selected":"Configured but off"):"Not connected";
-    el.append(av,info,state);memberBox.append(el);
+    const state=document.createElement("span");state.className="member-state"+(configured&&active?" live":"");state.title=configured?(active?"Selected":"Connected, not selected"):"API key not configured";
+    el.append(avatar,info,state);memberBox.append(el);
   });
+  document.querySelectorAll("[data-member-count]").forEach(el=>el.textContent=String(people.length));
 }
 async function loadStatus(){
   try{
-    const r=await fetch("./api/status",{cache:"no-store"});
-    if(!r.ok)throw new Error("Backend is not deployed");
-    const data=await r.json();
-    providerStatus={};
-    (data.participants||[]).forEach(p=>providerStatus[p.id]=p);
+    const response=await fetch("./api/status",{cache:"no-store"});
+    if(!response.ok)throw new Error("Status endpoint unavailable");
+    const data=await response.json();providerStatus={};
+    (data.participants||[]).forEach(person=>providerStatus[person.id]=person);
     selectedProviders=selectedProviders.filter(id=>providerStatus[id]?.configured);
-    if(!selectedProviders.length){
-      if(providerStatus.gemini?.configured)selectedProviders.push("gemini");
-      if(providerStatus.deepseek?.configured)selectedProviders.push("deepseek");
-    }
     localStorage.setItem("council_providers",JSON.stringify(selectedProviders));
+    const ready=selectedProviders.length;
     const chip=document.querySelector(".demo-chip");
-    const activeNames=selectedProviders.map(id=>people.find(p=>p.id===id)?.name).filter(Boolean);
-    chip.textContent=activeNames.length?activeNames.join(" + ")+" LIVE":"API SETUP";
-    chip.classList.toggle("live",activeNames.length>0);
+    chip.textContent=ready?ready+" AI"+(ready===1?"":"s")+" SELECTED":"CONNECT AIs";
+    chip.classList.toggle("live",ready>0);
     renderMembers();
   }catch{
-    document.querySelector(".demo-chip").textContent="BACKEND SETUP";
+    document.querySelector(".demo-chip").textContent="BACKEND OFFLINE";
     renderMembers();
   }
 }
-function addMessage(name,text,{user=false,live=false,person=null,system=false}={}){
+function addMessage(name,text,options={}){
   document.querySelector("#welcome")?.remove();
-  const card=document.createElement("article");card.className="message"+(user?" user":"")+(system?" system":"");
+  const card=document.createElement("article");card.className="message"+(options.user?" user":"")+(options.system?" system":"");
   const head=document.createElement("div");head.className="message-head";
-  const av=document.createElement("span");av.className="message-avatar";
-  av.textContent=user?"Y":system?"!":person?.mark||"?";
-  av.style.background=user?"#e7c3a4":system?"#4a3440":person?.color||"#29334a";
-  av.style.color=user?"#38251d":system?"#ffd0d0":person?.ink||"#fff";
-  const nm=document.createElement("span");nm.className="message-name";nm.textContent=name;head.append(av,nm);
-  if(live){const tag=document.createElement("span");tag.className="message-tag live";tag.textContent="LIVE API";head.append(tag);}
+  const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent=options.user?"Y":options.system?"!":options.person?.mark||"?";
+  avatar.style.background=options.user?"#e7c3a4":options.system?"#4a3440":options.person?.color||"#29334a";
+  avatar.style.color=options.user?"#38251d":options.system?"#ffd0d0":options.person?.ink||"#fff";
+  const label=document.createElement("span");label.className="message-name";label.textContent=name;head.append(avatar,label);
+  if(options.live){const tag=document.createElement("span");tag.className="message-tag live";tag.textContent="LIVE API";head.append(tag);}
   const body=document.createElement("div");body.className="message-body";body.textContent=text;
   card.append(head,body);feed.append(card);feed.scrollTop=feed.scrollHeight;
 }
 function showTyping(){
-  const names=selectedProviders.map(id=>people.find(p=>p.id===id)?.name).filter(Boolean).join(" and ");
+  const names=selectedProviders.map(id=>people.find(person=>person.id===id)?.name).filter(Boolean).join(", ");
   const el=document.createElement("div");el.className="typing";el.id="typing";
   el.innerHTML="<i></i><i></i><i></i><span></span>";
-  el.querySelector("span").textContent=(names||"Your council")+" thinking…";
+  el.querySelector("span").textContent=(names||"The council")+" are thinking…";
   feed.append(el);feed.scrollTop=feed.scrollHeight;return el;
 }
 function getAccessCode(){
   let code=sessionStorage.getItem("council_access_code");
-  if(!code){code=window.prompt("Enter your private AI Council access code (the code you set in Cloudflare):");if(code)sessionStorage.setItem("council_access_code",code);}
+  if(!code){code=window.prompt("Enter your private AI Council access code (the code configured in Cloudflare):");if(code)sessionStorage.setItem("council_access_code",code);}
   return code||"";
 }
-async function sendMessage(text){
-  const message=text.trim();if(!message||send.disabled)return;
-  addMessage("You",message,{user:true});
-  input.value="";input.style.height="auto";
-  send.disabled=true;
+async function sendMessage(rawText){
+  const message=rawText.trim();if(!message||send.disabled)return;
+  addMessage("You",message,{user:true});input.value="";input.style.height="auto";send.disabled=true;
   const typing=showTyping();
   try{
     const code=getAccessCode();
-    if(!code){typing.remove();addMessage("System","Your private access code is needed before sending messages.",{system:true});return;}
+    if(!code){typing.remove();addMessage("System","Your private access code is needed before contacting the council.",{system:true});return;}
+    if(!selectedProviders.length){typing.remove();addMessage("System","Open Connect AIs and select at least one provider with an API key configured.",{system:true});return;}
     const response=await fetch("./api/chat",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-chatroom-code":code},
-      body:JSON.stringify({message,history:conversation.slice(-10),providers:selectedProviders})
+      method:"POST",headers:{"Content-Type":"application/json","x-chatroom-code":code},
+      body:JSON.stringify({message,history:roomHistory.slice(-12),providers:selectedProviders})
     });
     const data=await response.json().catch(()=>({}));
     typing.remove();
-    if(response.status===401){sessionStorage.removeItem("council_access_code");addMessage("System","That access code was not accepted. Send again and enter the correct code.",{system:true});return;}
-    if(!response.ok)throw new Error(data.error||"The AI service could not respond.");
+    if(response.status===401){sessionStorage.removeItem("council_access_code");addMessage("System","That access code was not accepted. Send again to enter the correct code.",{system:true});return;}
+    if(!response.ok)throw new Error(data.error||"The council could not respond.");
+    roomHistory.push({role:"user",content:message});
     (data.replies||[]).forEach(reply=>{
-      const person=people.find(p=>p.id===reply.id);
+      const person=people.find(item=>item.id===reply.id);
       addMessage(reply.name,reply.content,{live:true,person});
-      conversation.push({role:"user",content:message},{role:"model",content:reply.content});
+      roomHistory.push({role:"assistant",content:"["+reply.name+"] "+reply.content});
     });
     (data.errors||[]).forEach(item=>addMessage(item.name+" connection notice",item.error,{system:true}));
-    conversation=conversation.slice(-10);
-  }catch(error){
-    typing.remove();
-    addMessage("Connection notice",error.message,{system:true});
-  }finally{
-    send.disabled=false;input.focus();
-  }
+    roomHistory=roomHistory.slice(-12);
+  }catch(error){typing.remove();addMessage("Connection notice",error.message,{system:true});}
+  finally{send.disabled=false;input.focus();}
 }
 function openApiSetup(){
   let modal=document.querySelector("#api-setup-modal");
   if(!modal){
     modal=document.createElement("div");modal.id="api-setup-modal";modal.className="setup-backdrop";
-    modal.innerHTML='<section class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title"><div class="setup-head"><div><div class="eyebrow">COUNCIL CONNECTIONS</div><h2 id="setup-title">API Setup</h2></div><button class="setup-close" type="button" aria-label="Close">×</button></div><p class="setup-intro">Your API keys stay safely in Cloudflare. This page never asks you to paste a secret into the browser.</p><div id="setup-providers"></div><div class="setup-note" id="setup-note">Select the connected providers you want replying. DeepSeek API usage is billed by DeepSeek; check your balance and current rates before sending messages.</div><button class="setup-save" type="button">Save settings</button></section>';
+    modal.innerHTML='<section class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title"><div class="setup-head"><div><div class="eyebrow">INDEPENDENT AI PARTICIPANTS</div><h2 id="setup-title">Connect your council</h2></div><button class="setup-close" type="button" aria-label="Close">×</button></div><p class="setup-intro">Each provider connects through its own API key. Keys stay in Cloudflare and are never sent to this browser. Select which connected AIs should answer this room.</p><div id="setup-providers"></div><div class="setup-note">Add provider secrets in Cloudflare Pages → your project → Settings → Variables and Secrets. Set CHATROOM_ACCESS_CODE and any provider keys you want to use. Optional model overrides are available; otherwise the backend uses its listed default model. API usage may incur charges from each provider.</div><button class="setup-save" type="button">Save council members</button></section>';
     document.body.append(modal);
     modal.querySelector(".setup-close").addEventListener("click",()=>modal.remove());
-    modal.addEventListener("click",e=>{if(e.target===modal)modal.remove()});
+    modal.addEventListener("click",event=>{if(event.target===modal)modal.remove();});
     modal.querySelector(".setup-save").addEventListener("click",()=>{
-      selectedProviders=[...modal.querySelectorAll('input[name="provider"]:checked')].map(el=>el.value);
-      localStorage.setItem("council_providers",JSON.stringify(selectedProviders));
-      renderMembers();loadStatus();modal.remove();
+      selectedProviders=[...modal.querySelectorAll('input[name="provider"]:checked')].map(element=>element.value);
+      localStorage.setItem("council_providers",JSON.stringify(selectedProviders));renderMembers();loadStatus();modal.remove();
     });
   }
-  const list=modal.querySelector("#setup-providers");list.innerHTML="";
-  ["gemini","deepseek"].forEach(id=>{
-    const person=people.find(p=>p.id===id),status=providerStatus[id]||{},configured=Boolean(status.configured);
+  const list=modal.querySelector("#setup-providers");list.replaceChildren();
+  people.forEach(person=>{
+    const status=providerStatus[person.id]||{},configured=Boolean(status.configured);
     const label=document.createElement("label");label.className="setup-provider";
-    const inputEl=document.createElement("input");inputEl.type="checkbox";inputEl.name="provider";inputEl.value=id;inputEl.checked=configured&&selectedProviders.includes(id);inputEl.disabled=!configured;
+    const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.name="provider";checkbox.value=person.id;checkbox.checked=configured&&selectedProviders.includes(person.id);checkbox.disabled=!configured;
     const copy=document.createElement("span");copy.className="setup-provider-copy";
     const title=document.createElement("strong");title.textContent=person.name;
-    const sub=document.createElement("small");sub.textContent=configured?(status.connected?"Key stored in Cloudflare · ready":"Key stored · check access code"):"Not configured · add "+(id==="gemini"?"GEMINI_API_KEY":"DEEPSEEK_API_KEY")+" in Cloudflare";
-    copy.append(title,sub);
-    const state=document.createElement("span");state.className="setup-state"+(configured?" ready":"");state.textContent=configured?(status.connected?"Ready":"Check setup"):"Missing key";
-    label.append(inputEl,copy,state);list.append(label);
+    const detail=document.createElement("small");detail.textContent=configured?"API key detected"+(status.model?" · "+status.model:"")+" · "+person.role:"Add "+({openai:"OPENAI_API_KEY",gemini:"GEMINI_API_KEY",deepseek:"DEEPSEEK_API_KEY",claude:"ANTHROPIC_API_KEY",grok:"XAI_API_KEY",llama:"GROQ_API_KEY"}[person.id])+" in Cloudflare";
+    copy.append(title,detail);
+    const state=document.createElement("span");state.className="setup-state"+(configured?" ready":"");state.textContent=configured?"Available":"Not configured";
+    label.append(checkbox,copy,state);list.append(label);
   });
-  modal.hidden=false;
-  modal.querySelector(".setup-save").focus();
+  modal.hidden=false;modal.querySelector(".setup-save").focus();
 }
+function welcomeMarkup(){
+  return '<div class="welcome" id="welcome"><div class="welcome-symbol">✳</div><div class="eyebrow">INDEPENDENT MINDS. ONE ROOM.</div><h2>Good conversations<br><span>start here.</span></h2><p>Bring a question, an idea, or a challenge. Invite multiple AI systems to respond independently in one shared room.</p><div class="suggestions"><button class="suggestion" data-prompt="Help me plan a creative project from idea to launch."><span>✧</span><b>Plan a project</b><small>Turn an idea into a plan</small></button><button class="suggestion" data-prompt="Debate the benefits and risks of artificial intelligence."><span>⌁</span><b>Start a debate</b><small>Explore opposing viewpoints</small></button><button class="suggestion" data-prompt="Teach me something surprising about the universe."><span>◉</span><b>Learn something</b><small>Explore a new question</small></button></div></div>';
+}
+function bindSuggestions(){document.querySelectorAll(".suggestion").forEach(button=>button.addEventListener("click",()=>sendMessage(button.dataset.prompt)));}
+function clearChat(){roomHistory=[];feed.innerHTML=welcomeMarkup();bindSuggestions();}
 document.querySelector(".demo-chip").addEventListener("click",openApiSetup);
-form.addEventListener("submit",e=>{e.preventDefault();sendMessage(input.value)});
-input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit()}});
-input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,160)+"px"});
-document.querySelectorAll(".suggestion").forEach(button=>button.addEventListener("click",()=>sendMessage(button.dataset.prompt)));
-function clearChat(){
-  conversation=[];feed.innerHTML='<div class="welcome" id="welcome"><div class="welcome-symbol">✳</div><div class="eyebrow">FIVE MINDS. ONE ROOM.</div><h2>Good conversations<br><span>start here.</span></h2><p>Bring a question, an idea, or a challenge. Your council is ready to explore it from different perspectives.</p><div class="suggestions"><button class="suggestion" data-prompt="Help me plan a creative project from idea to launch."><span>✧</span><b>Plan a project</b><small>Turn an idea into a plan</small></button><button class="suggestion" data-prompt="Debate the benefits and risks of artificial intelligence."><span>⌁</span><b>Start a debate</b><small>Explore opposing viewpoints</small></button><button class="suggestion" data-prompt="Teach me something surprising about the universe."><span>◉</span><b>Learn something</b><small>Explore a new question</small></button></div></div>';
-  document.querySelectorAll(".suggestion").forEach(button=>button.addEventListener("click",()=>sendMessage(button.dataset.prompt)));
-}
+form.addEventListener("submit",event=>{event.preventDefault();sendMessage(input.value);});
+input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();form.requestSubmit();}});
+input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,160)+"px";});
 document.querySelector("#clear").addEventListener("click",clearChat);
 document.querySelector("#new-chat").addEventListener("click",clearChat);
-loadStatus();
+bindSuggestions();loadStatus();
