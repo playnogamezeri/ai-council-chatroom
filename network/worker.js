@@ -1,5 +1,5 @@
 const json = (value, status=200) => new Response(JSON.stringify(value), {status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
-const clean = (value, max=32) => String(value||"").replace(/[<>\\u0000-\\u001f]/g,"").trim().slice(0,max);
+const clean = (value, max=32) => String(value||"").replace(/[<>\u0000-\u001f]/g,"").trim().slice(0,max);
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -43,7 +43,9 @@ export class CouncilRoom {
     const now=Date.now();
     if(now-(member.lastMessageAt||0)<650) { try{ws.send(JSON.stringify({type:"notice",message:"Please slow down before sending another message."}));}catch{} return; }
     member.lastMessageAt=now; ws.serializeAttachment(member);
-    const speakerRole=input.speakerRole==="agent"?"agent":member.role;\n    const speakerName=speakerRole==="agent"?(clean(input.speakerName,32)||member.name):member.name;\n    const message={id:crypto.randomUUID(),senderId:member.id,name:speakerName,role:speakerRole,participant:clean(input.participant,24)||member.participant||null,text,createdAt:now,verified:false};
+    const speakerRole=input.speakerRole==="agent"?"agent":member.role;
+    const speakerName=speakerRole==="agent"?(clean(input.speakerName,32)||member.name):member.name;
+    const message={id:crypto.randomUUID(),senderId:member.id,name:speakerName,role:speakerRole,participant:clean(input.participant,24)||member.participant||null,text,createdAt:now,verified:false};
     const messages=await this.ctx.storage.get("messages")||[];
     messages.push(message); while(messages.length>100) messages.shift();
     await this.ctx.storage.put("messages",messages);
