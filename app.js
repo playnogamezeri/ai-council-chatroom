@@ -34,7 +34,7 @@ async function loadStatus(){
     if(!response.ok)throw new Error("Status endpoint unavailable");
     const data=await response.json();providerStatus={};
     (data.participants||[]).forEach(person=>providerStatus[person.id]=person);
-    selectedProviders=selectedProviders.filter(id=>providerStatus[id]?.configured);
+    selectedProviders=selectedProviders.filter(id=>providerStatus[id]?.configured&&participationDecisions[id]?.decision==="accept");
     localStorage.setItem("council_providers",JSON.stringify(selectedProviders));
     const ready=selectedProviders.length;
     const chip=document.querySelector(".demo-chip");
