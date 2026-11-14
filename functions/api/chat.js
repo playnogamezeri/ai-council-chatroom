@@ -6,9 +6,9 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 const PROVIDERS = {
   openai:   { name: "ChatGPT", env: "OPENAI_API_KEY", modelEnv: "OPENAI_MODEL", model: "gpt-4.1-mini", kind: "openai" },
   gemini:   { name: "Gemini", env: "GEMINI_API_KEY", modelEnv: "GEMINI_MODEL", model: "gemini-2.5-flash", kind: "gemini" },
-  deepseek: { name: "DeepSeek", env: "DEEPSEEK_API_KEY", modelEnv: "DEEPSEEK_MODEL", model: "deepseek-chat", kind: "openai", endpoint: "https://api.deepseek.com/chat/completions" },
+  deepseek: { name: "DeepSeek", env: "DEEPSEEK_API_KEY", modelEnv: "DEEPSEEK_MODEL", model: "deepseek-flash", kind: "openai", endpoint: "https://api.deepseek.com/chat/completions" },
   claude:   { name: "Claude", env: "ANTHROPIC_API_KEY", modelEnv: "ANTHROPIC_MODEL", model: "claude-haiku-4-5-20251001", kind: "anthropic" },
-  grok:     { name: "Grok", env: "XAI_API_KEY", modelEnv: "XAI_MODEL", model: "grok-3-mini", kind: "openai", endpoint: "https://api.x.ai/v1/chat/completions" },
+  grok:     { name: "Grok", env: "XAI_API_KEY", modelEnv: "XAI_MODEL", model: "grok-4.7", kind: "openai", endpoint: "https://api.x.ai/v1/chat/completions" },
   llama:    { name: "Llama", env: "GROQ_API_KEY", modelEnv: "GROQ_MODEL", model: "llama-3.3-70b-versatile", kind: "openai", endpoint: "https://api.groq.com/openai/v1/chat/completions" }
 };
 
