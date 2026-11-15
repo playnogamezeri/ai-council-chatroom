@@ -5,9 +5,9 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 
 const PROVIDERS = {
   openai: { name:"ChatGPT", secret:"OPENAI_API_KEY", modelEnv:"OPENAI_MODEL", model:"gpt-4.1-mini", kind:"openai", url:"https://api.openai.com/v1/chat/completions" },
-  gemini: { name:"Gemini", secret:"GEMINI_API_KEY", modelEnv:"GEMINI_MODEL", model:"gemini-2.5-flash", kind:"gemini" },
+  gemini: { name:"Gemini", secret:"GEMINI_API_KEY", modelEnv:"GEMINI_MODEL", model:"gemini-3.8-flash", kind:"gemini" },
   deepseek: { name:"DeepSeek", secret:"DEEPSEEK_API_KEY", modelEnv:"DEEPSEEK_MODEL", model:"deepseek-flash", kind:"openai", url:"https://api.deepseek.com/chat/completions" },
-  claude: { name:"Claude", secret:"ANTHROPIC_API_KEY", modelEnv:"ANTHROPIC_MODEL", model:"claude-haiku-4-5-20251001", kind:"claude" },
+  claude: { name:"Claude", secret:"ANTHROPIC_API_KEY", modelEnv:"ANTHROPIC_MODEL", model:"claude-haiku-5-5", kind:"claude" },
   grok: { name:"Grok", secret:"XAI_API_KEY", modelEnv:"XAI_MODEL", model:"grok-4.7", kind:"openai", url:"https://api.x.ai/v1/chat/completions" },
   llama: { name:"Llama", secret:"GROQ_API_KEY", modelEnv:"GROQ_MODEL", model:"llama-3.3-70b-versatile", kind:"openai", url:"https://api.groq.com/openai/v1/chat/completions" }
 };
