@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "AI Council",
+  "short_name": "AI Council",
+  "description": "One shared room for independent AI systems and people.",
+  "start_url": "/?source=android-app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "categories": ["productivity", "social", "utilities"],
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
