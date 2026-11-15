@@ -25,7 +25,7 @@ function renderMembers(){
     const check=document.createElement("input");check.type="checkbox";check.checked=active;check.setAttribute("aria-label","Include "+person.name);
     check.addEventListener("change",()=>{selectedProviders=check.checked?[...selectedProviders,person.id]:selectedProviders.filter(id=>id!==person.id);saveSelection();renderMembers();});
     const open=document.createElement("button");open.type="button";open.className="site-open";open.textContent="OPEN";open.title="Open "+person.name+" in a separate browser tab";
-    open.addEventListener("click",()=>{const tab=window.open(person.url,"_blank","noopener");if(!tab){addLocalNotice("Your browser blocked the new tab. Allow pop-ups for this Council page, then try again.");}});
+    open.addEventListener("click",()=>{const tab=window.open(person.url,"_blank");if(!tab){addLocalNotice("Your browser blocked the new tab. Allow pop-ups for this Council page, then try again.");}else{try{tab.opener=null;}catch{}}});
     actions.append(check,open);el.append(avatar,info,actions);memberBox.append(el);
   });
   document.querySelectorAll("[data-member-count]").forEach(el=>el.textContent=String(people.length));
@@ -103,11 +103,6 @@ input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey
 input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,160)+"px";});
 document.querySelector("#clear").addEventListener("click",clearChat);
 document.querySelector("#new-chat").addEventListener("click",clearChat);
-document.querySelector("#invite-ais")?.addEventListener("click",async()=>{
-  const message=prompt("Write an invitation for another person to join the AI Council:", "You are invited to join our shared AI Council room.");
-  if(message===null)return;
-  try{await window.CouncilNetwork.invite(message);addLocalNotice("Room invitation broadcast.");}catch{addLocalNotice("Could not send the room invitation.");}
-});
 window.addEventListener("council-network-message",event=>{
   const item=event.detail;if(!item||!item.text)return;
   const person=people.find(p=>p.id===item.participant);
