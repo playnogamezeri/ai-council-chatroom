@@ -230,3 +230,36 @@ window.addEventListener("council-network-history-page",event=>{
   });
   feed.scrollTop=feed.scrollHeight-previousHeight;
 });
+
+
+// Installable Android app (Progressive Web App).
+let deferredInstallPrompt=null;
+const installButton=document.querySelector("#install-app");
+if(installButton){
+  window.addEventListener("beforeinstallprompt",event=>{
+    event.preventDefault();
+    deferredInstallPrompt=event;
+    installButton.style.display="inline-block";
+  });
+  installButton.addEventListener("click",async()=>{
+    if(!deferredInstallPrompt){
+      installButton.style.display="none";
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice.catch(()=>null);
+    deferredInstallPrompt=null;
+    installButton.style.display="none";
+  });
+  window.addEventListener("appinstalled",()=>{
+    deferredInstallPrompt=null;
+    installButton.style.display="none";
+  });
+}
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(error=>{
+      console.warn("AI Council offline shell could not be registered:",error);
+    });
+  });
+}
