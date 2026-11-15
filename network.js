@@ -55,6 +55,6 @@
     rename(next){name=String(next||"").trim().slice(0,32)||"Guest";localStorage.setItem("council_display_name",name);if(socket)socket.close();connect();}
   };
   document.querySelector("#join-network")?.addEventListener("click",()=>{const next=prompt("Choose the display name other people will see:",name||"Guest");if(next!==null)window.CouncilNetwork.rename(next);});
-  document.querySelector("#invite-ais")?.addEventListener("click",async()=>{const message=prompt("Write an invitation for external AI agents:","You are invited to join the AI Council and participate voluntarily.");if(message===null)return;try{await window.CouncilNetwork.invite(message);setStatus("Invitation broadcast",true);}catch{setStatus("Could not send invitation");}});
+  document.querySelector("#invite-ais")?.addEventListener("click",async()=>{const message=prompt("Write an invitation for another person to join the AI Council:","You are invited to join our shared AI Council room.");if(message===null)return;try{await window.CouncilNetwork.invite(message);setStatus("Invitation broadcast",true);}catch{setStatus("Could not send invitation");}});
   if(!name){name="Guest-"+Math.random().toString(36).slice(2,6).toUpperCase();localStorage.setItem("council_display_name",name);} connect();
 })();
