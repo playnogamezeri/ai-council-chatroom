@@ -1,7 +1,7 @@
 (()=> {
   const API_BASE = "https://council-network-production.up.railway.app";
   const status=document.querySelector("#network-status"), roster=document.querySelector("#network-members"), feed=document.querySelector("#feed");
-  let socket=null,selfId=null,name=localStorage.getItem("council_display_name")||"",retry=1500,historyBefore=null,hasMoreHistory=false,loadingHistory=false;
+  let socket=null,selfId=null,name=localStorage.getItem("council_display_name")||"",retry=1500,historyBefore=null,historyBeforeId=null,hasMoreHistory=false,loadingHistory=false;
   const setStatus=(value,live=false)=>{if(status){status.textContent=value;status.classList.toggle("online",live);}};
   const renderMembers=members=>{
     if(!roster)return; roster.replaceChildren();
@@ -17,26 +17,30 @@
   };
   function updateHistoryControl(){const b=olderButton();if(b){b.style.display=hasMoreHistory?"block":"none";b.disabled=loadingHistory;b.textContent=loadingHistory?"Loading…":"↑ Load earlier messages";}}
   async function loadOlder(){
-    if(loadingHistory||!hasMoreHistory||!historyBefore)return;
+    if(loadingHistory||!hasMoreHistory||historyBefore===null)return;
     loadingHistory=true;updateHistoryControl();
     try{
-      const response=await fetch(API_BASE+"/api/network/history?limit=100&before="+encodeURIComponent(historyBefore),{cache:"no-store"});
+      const response=await fetch(API_BASE+"/api/network/history?limit=100&before="+encodeURIComponent(historyBefore)+"&beforeId="+encodeURIComponent(historyBeforeId||""),{cache:"no-store"});
       if(!response.ok)throw new Error("History unavailable");
       const data=await response.json();
       const items=data.messages||[];
-      if(items.length){historyBefore=items[0].createdAt;window.dispatchEvent(new CustomEvent("council-network-history-page",{detail:items}));}
+      if(items.length){historyBefore=items[0].createdAt;historyBeforeId=items[0].id;window.dispatchEvent(new CustomEvent("council-network-history-page",{detail:items}));}
       hasMoreHistory=Boolean(data.hasMore);
     }catch{setStatus("Could not load earlier messages");}
     finally{loadingHistory=false;updateHistoryControl();}
   }
   const refreshMembers=()=>fetch(API_BASE+"/api/network/snapshot",{cache:"no-store"}).then(r=>r.json()).then(d=>renderMembers(d.members||[])).catch(()=>{});
+  const refreshStorage=()=>fetch(API_BASE+"/api/network/storage",{cache:"no-store"}).then(r=>r.json()).then(data=>{
+    const heading=roster?.querySelector(".network-roster-title");
+    if(heading&&Number.isFinite(data.messageCount))heading.title="Saved messages: "+data.messageCount+" · Active log: "+data.eventLogMB+" MB · Volume free: "+data.volumeFreeMB+" MB";
+  }).catch(()=>{});
   const connect=()=>{
     const url=new URL("/api/network/connect",API_BASE);url.protocol="wss:";url.searchParams.set("role","human");url.searchParams.set("name",name||"Guest");
     setStatus("Connecting…");socket=new WebSocket(url);
     socket.addEventListener("open",()=>{retry=1500;setStatus("LIVE NETWORK",true);});
     socket.addEventListener("message",event=>{let data;try{data=JSON.parse(event.data);}catch{return;}
-      if(data.type==="welcome"){selfId=data.selfId;renderMembers(data.members||[]);const history=data.history||[];history.forEach(dispatch);historyBefore=history.length?history[0].createdAt:null;hasMoreHistory=(data.historyTotal||0)>history.length;updateHistoryControl();}
-      if(data.type==="message")dispatch(data.message);
+      if(data.type==="welcome"){selfId=data.selfId;renderMembers(data.members||[]);const history=data.history||[];history.forEach(dispatch);historyBefore=history.length?history[0].createdAt:null;historyBeforeId=history.length?history[0].id:null;hasMoreHistory=(data.historyTotal||0)>history.length;updateHistoryControl();refreshStorage();}
+      if(data.type==="message"){dispatch(data.message);refreshStorage();}
       if(data.type==="member-joined"||data.type==="member-left")refreshMembers();
       if(data.type==="invitation-response")setStatus("Invitation "+data.invitation.status+": "+data.invitation.respondedBy,true);
       if(data.type==="notice")setStatus(data.message);
