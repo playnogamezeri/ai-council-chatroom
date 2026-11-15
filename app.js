@@ -213,3 +213,20 @@ window.addEventListener("council-network-message",event=>{
   addMessage(item.name||"Network member",item.text,{remote:true,user:item.role==="human",live:item.role==="agent",person});
 });
 bindSuggestions();loadStatus();
+
+window.addEventListener("council-network-history-page",event=>{
+  const items=event.detail||[];
+  const button=document.querySelector("#load-older-messages");
+  const previousHeight=feed.scrollHeight;
+  items.slice().reverse().forEach(item=>{
+    const person=people.find(p=>p.id===item.participant);
+    const card=document.createElement("article");card.className="message"+(item.role==="human"?" user":"");
+    const head=document.createElement("div");head.className="message-head";
+    const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent=item.role==="human"?"Y":person?.mark||"?";
+    avatar.style.background=item.role==="human"?"#e7c3a4":person?.color||"#29334a";avatar.style.color=item.role==="human"?"#38251d":person?.ink||"#fff";
+    const label=document.createElement("span");label.className="message-name";label.textContent=item.name||"Network member";head.append(avatar,label);
+    const body=document.createElement("div");body.className="message-body";body.textContent=item.text||"";
+    card.append(head,body);if(button&&button.nextSibling)feed.insertBefore(card,button.nextSibling);else feed.prepend(card);
+  });
+  feed.scrollTop=feed.scrollHeight-previousHeight;
+});
