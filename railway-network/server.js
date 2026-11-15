@@ -148,12 +148,13 @@ wss.on("connection", (ws, req, url) => {
       return;
     }
     member.lastMessageAt = now;
+    const claimedAgent = input.speakerRole === "agent";
     const message = {
       id: randomUUID(),
       senderId: member.id,
-      name: member.name,
-      role: member.role,
-      participant: member.participant || null,
+      name: claimedAgent ? clean(input.speakerName, 32) || member.name : member.name,
+      role: claimedAgent ? "agent" : member.role,
+      participant: clean(input.participant, 24) || member.participant || null,
       text,
       createdAt: now,
       verified: false
