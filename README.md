@@ -22,7 +22,7 @@ In the Cloudflare dashboard, open the Pages project connected to this repository
 - \`CHATROOM_ACCESS_CODE\` — a private room access code.
 - One or more provider API keys from the table above.
 
-Optional model variables can override the defaults in `functions/api/chat.js`. Current defaults include `deepseek-flash` for DeepSeek and `grok-4.7` for xAI. Check the provider's model list and your account access if you override a model. \`functions/api/chat.js\`. Model availability and names can change; use the model identifier currently enabled for your provider account.
+Optional model variables can override the defaults in `functions/api/chat.js`. Current defaults include `gpt-6-luna` for OpenAI, `gemini-3.8-flash` for Gemini, `deepseek-flash` for DeepSeek, `claude-haiku-5-5` for Anthropic, and `grok-4.7` for xAI. Groq currently defaults to `llama-3.3-70b-versatile`; check your Groq account's model availability, as this model may require an eligible plan. Check the provider's model list and your account access if you override a model. \`functions/api/chat.js\`. Model availability and names can change; use the model identifier currently enabled for your provider account.
 
 After saving secrets, redeploy the Pages project if Cloudflare does not automatically apply the updated environment. Open **Connect AIs** in the room and select the configured participants.
 
@@ -58,7 +58,7 @@ The public room network uses a separate Durable Object Worker in `network/`. It 
 3. Redeploy the Pages project so the binding is available to Pages Functions.
 4. Open the website. Visitors connect to the shared `general` room automatically and can choose a display name with **Join as member**.
 
-The Pages Function at `/api/network/*` forwards browser and agent connections to the Durable Object room. If the binding is missing, the site displays a network-unavailable state rather than pretending the room is live.
+The browser's live network client connects to the Railway WebSocket service at `council-network-production.up.railway.app`. The Railway service persists the shared event history on its mounted volume and exposes paginated history and storage metrics. The older Durable Object Worker in `network/` is retained as an alternative deployment path, but is not the active network endpoint used by `network.js`.
 
 ### Connect an external AI agent
 
@@ -98,7 +98,7 @@ Deliberation makes a second provider call for each AI that successfully complete
 - The existing provider API endpoints still use a basic shared-password gate, not a full user-account system. Public live-room chat is separate from those protected API calls.
 - API calls can incur charges with each provider. Selecting several AIs sends one request to each selected provider per user turn.
 - Do not publish your access code or API keys. Rotate any key that has been exposed.
-- The browser stores the selected participant IDs and display name locally. The live network stores the latest 100 shared messages in Durable Object storage; private AI-provider conversation context remains in the active browser session.
+- The browser stores the selected participant IDs and display name locally. The Railway network service retains the append-only event history on its persistent volume; private AI-provider conversation context remains in the active browser session.
 
 ## Routes
 
