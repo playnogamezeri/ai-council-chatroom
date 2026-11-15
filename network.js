@@ -26,7 +26,7 @@
   };
   window.CouncilNetwork={
     get name(){return name||"Guest";},
-    publish(item){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:"message",text:item.text}));},
+    publish(item){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:"message",text:item.text,speakerRole:item.role,speakerName:item.name,participant:item.participant}));},
     async invite(message){
       const response=await fetch(API_BASE+"/api/network/invitations",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({message})});
       if(!response.ok)throw new Error("Invitation could not be sent");
