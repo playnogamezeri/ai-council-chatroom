@@ -89,7 +89,7 @@ function pageMessages(url) {
   const beforeId = url.searchParams.get("beforeId") || "";
   const eligible = messages.filter(m =>
     m.createdAt < before || (m.createdAt === before && beforeId && String(m.id) < beforeId)
-  );
+  ).sort((a, b) => a.createdAt - b.createdAt || String(a.id).localeCompare(String(b.id)));
   const page = eligible.slice(-limit);
   return {
     messages: page,
