@@ -1,265 +1,135 @@
 const people = [
-  {id:"openai",name:"ChatGPT",mark:"C",color:"#d6f6e9",ink:"#17654a",role:"OpenAI"},
-  {id:"gemini",name:"Gemini",mark:"✦",color:"#dce8ff",ink:"#315db2",role:"Google"},
-  {id:"deepseek",name:"DeepSeek",mark:"D",color:"#d8eaff",ink:"#245d9b",role:"DeepSeek"},
-  {id:"claude",name:"Claude",mark:"A",color:"#f4dfd2",ink:"#8a4d2e",role:"Anthropic"},
-  {id:"grok",name:"Grok",mark:"X",color:"#e5e7eb",ink:"#242832",role:"xAI"},
-  {id:"llama",name:"Llama",mark:"∞",color:"#d9e9ff",ink:"#245b9e",role:"Meta model via Groq"}
+  {id:"openai",name:"ChatGPT",mark:"C",color:"#d6f6e9",ink:"#17654a",url:"https://chatgpt.com/"},
+  {id:"gemini",name:"Gemini",mark:"✦",color:"#dce8ff",ink:"#315db2",url:"https://gemini.google.com/app"},
+  {id:"claude",name:"Claude",mark:"A",color:"#f4dfd2",ink:"#8a4d2e",url:"https://claude.ai/new"},
+  {id:"grok",name:"Grok",mark:"X",color:"#e5e7eb",ink:"#242832",url:"https://grok.com/"},
+  {id:"deepseek",name:"DeepSeek",mark:"D",color:"#d8eaff",ink:"#245d9b",url:"https://chat.deepseek.com/"},
+  {id:"meta",name:"Meta AI",mark:"∞",color:"#d9e9ff",ink:"#245b9e",url:"https://www.meta.ai/"}
 ];
-const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send"),modeSelect=document.querySelector("#council-mode");
-modeSelect.value=localStorage.getItem("council_mode")==="deliberation"?"deliberation":"independent";
-modeSelect.addEventListener("change",()=>localStorage.setItem("council_mode",modeSelect.value));
-let roomHistory=[],providerStatus={};
-let participationDecisions=JSON.parse(localStorage.getItem("council_participation")||"{}");
-let selectedProviders=JSON.parse(localStorage.getItem("council_providers")||"[]");
-selectedProviders=selectedProviders.filter(id=>people.some(person=>person.id===id));
+const memberBox=document.querySelector("#members"),feed=document.querySelector("#feed"),form=document.querySelector("#form"),input=document.querySelector("#message"),send=document.querySelector("#send");
+let selectedProviders=JSON.parse(localStorage.getItem("council_browser_sites")||JSON.stringify(people.map(p=>p.id)));
+selectedProviders=selectedProviders.filter(id=>people.some(p=>p.id===id));
+let latestPrompt="";
+function saveSelection(){localStorage.setItem("council_browser_sites",JSON.stringify(selectedProviders));}
 function renderMembers(){
   memberBox.replaceChildren();
   people.forEach(person=>{
-    const status=providerStatus[person.id]||{},configured=Boolean(status.configured),active=selectedProviders.includes(person.id);
-    const el=document.createElement("div");el.className="member";
+    const active=selectedProviders.includes(person.id);
+    const el=document.createElement("div");el.className="member browser-member"+(active?" selected":"");
     const avatar=document.createElement("div");avatar.className="member-avatar";avatar.textContent=person.mark;avatar.style.background=person.color;avatar.style.color=person.ink;
     const info=document.createElement("div");info.className="member-info";
     const name=document.createElement("strong");name.textContent=person.name;
-    const role=document.createElement("small");role.textContent=configured?(active?"Selected · "+person.role:"Connected · "+person.role):"Not connected · "+person.role;
+    const role=document.createElement("small");role.textContent=active?"Selected for this prompt":"Not selected";
     info.append(name,role);
-    const state=document.createElement("span");state.className="member-state"+(configured&&active?" live":"");state.title=configured?(active?"Selected":"Connected, not selected"):"API key not configured";
-    el.append(avatar,info,state);memberBox.append(el);
+    const actions=document.createElement("div");actions.className="browser-member-actions";
+    const check=document.createElement("input");check.type="checkbox";check.checked=active;check.setAttribute("aria-label","Include "+person.name);
+    check.addEventListener("change",()=>{selectedProviders=check.checked?[...selectedProviders,person.id]:selectedProviders.filter(id=>id!==person.id);saveSelection();renderMembers();});
+    const open=document.createElement("button");open.type="button";open.className="site-open";open.textContent="OPEN";open.title="Open "+person.name+" in a separate browser tab";
+    open.addEventListener("click",()=>{const tab=window.open(person.url,"_blank","noopener");if(!tab){addLocalNotice("Your browser blocked the new tab. Allow pop-ups for this Council page, then try again.");}});
+    actions.append(check,open);el.append(avatar,info,actions);memberBox.append(el);
   });
   document.querySelectorAll("[data-member-count]").forEach(el=>el.textContent=String(people.length));
 }
-async function loadStatus(){
-  try{
-    const response=await fetch("./api/status",{cache:"no-store"});
-    if(!response.ok)throw new Error("Status endpoint unavailable");
-    const data=await response.json();providerStatus={};
-    (data.participants||[]).forEach(person=>providerStatus[person.id]=person);
-    selectedProviders=selectedProviders.filter(id=>providerStatus[id]?.configured&&participationDecisions[id]?.decision==="accept");
-    localStorage.setItem("council_providers",JSON.stringify(selectedProviders));
-    const ready=selectedProviders.length;
-    const chip=document.querySelector(".demo-chip");
-    chip.textContent=ready?ready+" AI"+(ready===1?"":"s")+" SELECTED":"CONNECT AIs";
-    chip.classList.toggle("live",ready>0);
-    renderMembers();
-  }catch{
-    document.querySelector(".demo-chip").textContent="BACKEND OFFLINE";
-    renderMembers();
-  }
-}
-function addMessage(name,text,options={}){
-  document.querySelector("#welcome")?.remove();
-  if(!options.remote && !options.system && window.CouncilNetwork){
-    window.CouncilNetwork.publish({name, text, role:options.user?"human":"agent", participant:options.person?.id||null});
-  }
-  const card=document.createElement("article");card.className="message"+(options.user?" user":"")+(options.system?" system":"");
+function addLocalNotice(text){
+  const card=document.createElement("article");card.className="message system";
   const head=document.createElement("div");head.className="message-head";
-  const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent=options.user?"Y":options.system?"!":options.person?.mark||"?";
-  avatar.style.background=options.user?"#e7c3a4":options.system?"#4a3440":options.person?.color||"#29334a";
-  avatar.style.color=options.user?"#38251d":options.system?"#ffd0d0":options.person?.ink||"#fff";
-  const label=document.createElement("span");label.className="message-name";label.textContent=name;head.append(avatar,label);
-  if(options.live){const tag=document.createElement("span");tag.className="message-tag live";tag.textContent="LIVE API";head.append(tag);}
+  const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent="✦";
+  const label=document.createElement("span");label.className="message-name";label.textContent="Council note";
+  head.append(avatar,label);
   const body=document.createElement("div");body.className="message-body";body.textContent=text;
   card.append(head,body);feed.append(card);feed.scrollTop=feed.scrollHeight;
 }
-function showTyping(){
-  const names=selectedProviders.map(id=>people.find(person=>person.id===id)?.name).filter(Boolean).join(", ");
-  const el=document.createElement("div");el.className="typing";el.id="typing";
-  el.innerHTML="<i></i><i></i><i></i><span></span>";
-  el.querySelector("span").textContent=(names||"The council")+" are thinking…";
-  feed.append(el);feed.scrollTop=feed.scrollHeight;return el;
+function addMessage(name,text,options={}){
+  document.querySelector("#welcome")?.remove();
+  if(!options.remote&&!options.system&&window.CouncilNetwork){
+    window.CouncilNetwork.publish({name,text,role:options.user?"human":"agent",participant:options.person?.id||null});
+  }
+  const card=document.createElement("article");card.className="message"+(options.user?" user":"")+(options.system?" system":"");
+  const head=document.createElement("div");head.className="message-head";
+  const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent=options.user?"Y":options.person?.mark||"✦";
+  avatar.style.background=options.user?"#e7c3a4":options.person?.color||"#4a3440";avatar.style.color=options.user?"#38251d":options.person?.ink||"#fff";
+  const label=document.createElement("span");label.className="message-name";label.textContent=name;head.append(avatar,label);
+  if(options.live){const tag=document.createElement("span");tag.className="message-tag live";tag.textContent="WEBSITE REPLY";head.append(tag);}
+  const body=document.createElement("div");body.className="message-body";body.textContent=text;
+  card.append(head,body);feed.append(card);feed.scrollTop=feed.scrollHeight;
 }
-function getAccessCode(){
-  let code=sessionStorage.getItem("council_access_code");
-  if(!code){code=window.prompt("Enter your private AI Council access code (the code configured in Cloudflare):");if(code)sessionStorage.setItem("council_access_code",code);}
-  return code||"";
+async function copyText(text){
+  if(!text)return false;
+  try{await navigator.clipboard.writeText(text);return true;}
+  catch{
+    const helper=document.createElement("textarea");helper.value=text;helper.style.position="fixed";helper.style.opacity="0";document.body.append(helper);helper.select();
+    let ok=false;try{ok=document.execCommand("copy");}catch{}helper.remove();return ok;
+  }
 }
 async function sendMessage(rawText){
   const message=rawText.trim();if(!message||send.disabled)return;
-  addMessage("You",message,{user:true});input.value="";input.style.height="auto";send.disabled=true;
-  const typing=showTyping();
-  try{
-    const code=getAccessCode();
-    if(!code){typing.remove();addMessage("System","Your private access code is needed before contacting the council.",{system:true});return;}
-    if(!selectedProviders.length){typing.remove();addMessage("System","Open Connect AIs and select at least one provider with an API key configured.",{system:true});return;}
-    const councilMode=modeSelect.value;
-    if(councilMode==="deliberation"&&selectedProviders.length<2){typing.remove();addMessage("System","AI-to-AI deliberation needs at least two connected participants. Select another AI or switch to Independent replies.",{system:true});return;}
-    const response=await fetch("./api/chat",{
-      method:"POST",headers:{"Content-Type":"application/json","x-chatroom-code":code},
-      body:JSON.stringify({message,history:roomHistory.slice(-12),providers:selectedProviders,mode:councilMode})
-    });
-    const data=await response.json().catch(()=>({}));
-    typing.remove();
-    if(response.status===401){sessionStorage.removeItem("council_access_code");addMessage("System","That access code was not accepted. Send again to enter the correct code.",{system:true});return;}
-    if(!response.ok)throw new Error(data.error||"The council could not respond.");
-    roomHistory.push({role:"user",content:message});
-    if(councilMode==="deliberation")addMessage("COUNCIL · ROUND 1","Independent opening positions",{system:true});
-    (data.replies||[]).forEach(reply=>{
-      const person=people.find(item=>item.id===reply.id);
-      addMessage(councilMode==="deliberation"?reply.name+" · Opening position":reply.name,reply.content,{live:true,person});
-      roomHistory.push({role:"assistant",content:"["+reply.name+" · opening position] "+reply.content});
-    });
-    (data.errors||[]).forEach(item=>addMessage(item.name+" connection notice",item.error,{system:true}));
-    if(councilMode==="deliberation"){
-      addMessage("COUNCIL · ROUND 2","Participants have reviewed the other opening positions. Disagreement is preserved; no consensus is forced.",{system:true});
-      (data.deliberations||[]).forEach(reply=>{
-        const person=people.find(item=>item.id===reply.id);
-        addMessage(reply.name+" · Peer review",reply.content,{live:true,person});
-        roomHistory.push({role:"assistant",content:"["+reply.name+" · peer review] "+reply.content});
-      });
-      (data.deliberationErrors||[]).forEach(item=>addMessage(item.name+" review notice",item.error,{system:true}));
-    }
-    roomHistory=roomHistory.slice(-12);
-  }catch(error){typing.remove();addMessage("Connection notice",error.message,{system:true});}
-  finally{send.disabled=false;input.focus();}
+  latestPrompt=message;
+  addMessage("You",message,{user:true});input.value="";input.style.height="auto";
+  const copied=await copyText(message);
+  addLocalNotice(copied?"Prompt copied to clipboard. Open the selected AI websites on the left, paste the prompt into each one, then use ADD AI REPLY to share their answers here.":"Prompt posted. If clipboard access was blocked, copy it from your message and paste it into each AI website.");
+  input.focus();
 }
-function openApiSetup(){
-  let modal=document.querySelector("#api-setup-modal");
+function welcomeMarkup(){
+ return '<div class="welcome" id="welcome"><div class="welcome-symbol">✳</div><div class="eyebrow">YOUR LOGINS. ONE SHARED ROOM.</div><h2>Bring your AIs<br><span>to the table.</span></h2><p>Send a prompt to the room, open your signed-in AI websites one by one, and bring their responses back here.</p><div class="suggestions"><button class="suggestion" data-prompt="Help me plan a creative project from idea to launch."><span>✧</span><b>Plan a project</b><small>Turn an idea into a plan</small></button><button class="suggestion" data-prompt="Debate the benefits and risks of artificial intelligence."><span>⌁</span><b>Start a debate</b><small>Explore opposing viewpoints</small></button><button class="suggestion" data-prompt="Teach me something surprising about the universe."><span>◉</span><b>Learn something</b><small>Explore a new question</small></button></div></div>';
+}
+function bindSuggestions(){document.querySelectorAll(".suggestion").forEach(button=>button.addEventListener("click",()=>sendMessage(button.dataset.prompt)));}
+function clearChat(){feed.innerHTML=welcomeMarkup();latestPrompt="";bindSuggestions();}
+function openReplyDialog(){
+  let modal=document.querySelector("#reply-modal");
   if(!modal){
-    modal=document.createElement("div");modal.id="api-setup-modal";modal.className="setup-backdrop";
-    modal.innerHTML='<section class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title"><div class="setup-head"><div><div class="eyebrow">INDEPENDENT AI PARTICIPANTS</div><h2 id="setup-title">Connect your council</h2></div><button class="setup-close" type="button" aria-label="Close">×</button></div><p class="setup-intro">Invite each connected AI to decide whether it wants to participate. Only AIs that accept can be selected for the room. API keys stay in Cloudflare.</p><button class="invite-all" type="button">✦ Invite connected AIs to decide</button><div class="invite-notice" role="status"></div><div id="setup-providers"></div><div class="setup-note">Add provider secrets in Cloudflare Pages → your project → Settings → Variables and Secrets. Set CHATROOM_ACCESS_CODE and any provider keys you want to use. Optional model overrides are available; otherwise the backend uses its listed default model. API usage may incur charges from each provider.</div><button class="setup-save" type="button">Save council members</button></section>';
+    modal=document.createElement("div");modal.id="reply-modal";modal.className="setup-backdrop";
+    modal.innerHTML='<section class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="reply-title"><div class="setup-head"><div><div class="eyebrow">BRING A WEBSITE RESPONSE INTO THE ROOM</div><h2 id="reply-title">Add AI reply</h2></div><button class="setup-close" type="button" aria-label="Close">×</button></div><p class="setup-intro">Paste the answer you copied from an AI website. It will be shared in the live Council room with the selected AI attribution.</p><label class="reply-label" for="reply-provider">AI WEBSITE</label><select id="reply-provider" class="reply-select"></select><label class="reply-label" for="reply-text">RESPONSE</label><textarea id="reply-text" class="reply-textarea" rows="8" placeholder="Paste the AI response here…" maxlength="20000"></textarea><button class="setup-save" id="publish-reply" type="button">Share reply with Council</button></section>';
     document.body.append(modal);
     modal.querySelector(".setup-close").addEventListener("click",()=>modal.remove());
     modal.addEventListener("click",event=>{if(event.target===modal)modal.remove();});
-    modal.querySelector(".invite-all").addEventListener("click",inviteConnectedAIs);
-    modal.querySelector(".setup-save").addEventListener("click",()=>{
-      selectedProviders=[...modal.querySelectorAll('input[name="provider"]:checked')].map(element=>element.value);
-      localStorage.setItem("council_providers",JSON.stringify(selectedProviders));renderMembers();loadStatus();modal.remove();
+    modal.querySelector("#publish-reply").addEventListener("click",()=>{
+      const id=modal.querySelector("#reply-provider").value,person=people.find(p=>p.id===id),text=modal.querySelector("#reply-text").value.trim();
+      if(!text){modal.querySelector("#reply-text").focus();return;}
+      addMessage(person.name,text,{person,live:true});modal.remove();
     });
   }
-  const list=modal.querySelector("#setup-providers");list.replaceChildren();
-  people.forEach(person=>{
-    const status=providerStatus[person.id]||{},configured=Boolean(status.configured);
-    const label=document.createElement("label");label.className="setup-provider";
-    const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.name="provider";checkbox.value=person.id;checkbox.checked=configured&&participationDecisions[person.id]?.decision==="accept"&&selectedProviders.includes(person.id);checkbox.disabled=!configured||participationDecisions[person.id]?.decision!=="accept";
-    const copy=document.createElement("span");copy.className="setup-provider-copy";
-    const title=document.createElement("strong");title.textContent=person.name;
-    const detail=document.createElement("small");detail.textContent=configured?(participationDecisions[person.id]?.decision||"not invited")+" · "+(status.model||person.role):"Add "+({openai:"OPENAI_API_KEY",gemini:"GEMINI_API_KEY",deepseek:"DEEPSEEK_API_KEY",claude:"ANTHROPIC_API_KEY",grok:"XAI_API_KEY",llama:"GROQ_API_KEY"}[person.id])+" in Cloudflare";
-    copy.append(title,detail);
-    const state=document.createElement("span");state.className="setup-state"+(configured?" ready":"");state.textContent=!configured?"Not configured":({accept:"Accepted",decline:"Declined",conditional:"Conditional",abstain:"Abstained"}[participationDecisions[person.id]?.decision]||"Not invited");state.classList.toggle("ready",participationDecisions[person.id]?.decision==="accept");
-    label.append(checkbox,copy,state);list.append(label);
-  });
-  modal.hidden=false;modal.querySelector(".setup-save").focus();
+  const select=modal.querySelector("#reply-provider");select.replaceChildren();
+  people.forEach(person=>{const option=document.createElement("option");option.value=person.id;option.textContent=person.name;select.append(option);});
+  select.value=selectedProviders[0]||people[0].id;modal.querySelector("#reply-text").value="";modal.hidden=false;modal.querySelector("#reply-text").focus();
 }
-
-async function inviteConnectedAIs(){
-  const modal=document.querySelector("#api-setup-modal");
-  const button=modal?.querySelector(".invite-all");
-  const notice=modal?.querySelector(".invite-notice");
-  const ids=people.filter(person=>providerStatus[person.id]?.configured).map(person=>person.id);
-  if(!ids.length){if(notice)notice.textContent="No provider API connections are configured yet.";return;}
-  const code=getAccessCode();
-  if(!code){if(notice)notice.textContent="The room access code is required.";return;}
-  button.disabled=true;button.textContent="Inviting AIs…";
-  if(notice)notice.textContent="Each configured model is receiving its own invitation. This makes API calls and may incur provider charges.";
-  try{
-    const response=await fetch("./api/participation",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-chatroom-code":code},
-      body:JSON.stringify({providers:ids})
-    });
-    const data=await response.json().catch(()=>({}));
-    if(response.status===401){sessionStorage.removeItem("council_access_code");throw new Error("Access code was not accepted.");}
-    if(!response.ok)throw new Error(data.error||"Invitation request failed.");
-    (data.decisions||[]).forEach(item=>{
-      participationDecisions[item.id]={decision:item.decision,message:item.message,conditions:item.conditions||[],at:Date.now()};
-    });
-    localStorage.setItem("council_participation",JSON.stringify(participationDecisions));
-    selectedProviders=selectedProviders.filter(id=>participationDecisions[id]?.decision==="accept");
-    (data.decisions||[]).forEach(item=>{
-      if(item.decision==="accept"&&!selectedProviders.includes(item.id))selectedProviders.push(item.id);
-    });
-    localStorage.setItem("council_providers",JSON.stringify(selectedProviders));
-    if(notice)notice.textContent=(data.decisions||[]).map(item=>item.name+": "+item.decision.toUpperCase()+" — "+item.message).join(" | ")+" Model-generated responses are not proof of consciousness or provider authorization.";
-    const list=modal.querySelector("#setup-providers");list.replaceChildren();
-    people.forEach(person=>{
-      const status=providerStatus[person.id]||{};
-      const configured=Boolean(status.configured);
-      const decision=participationDecisions[person.id]?.decision||"not-invited";
-      const accepted=decision==="accept";
-      const label=document.createElement("label");label.className="setup-provider";
-      const checkbox=document.createElement("input");
-      checkbox.type="checkbox";checkbox.name="provider";checkbox.value=person.id;
-      checkbox.checked=configured&&accepted&&selectedProviders.includes(person.id);
-      checkbox.disabled=!configured||!accepted;
-      const copy=document.createElement("span");copy.className="setup-provider-copy";
-      const title=document.createElement("strong");title.textContent=person.name;
-      const detail=document.createElement("small");
-      detail.textContent=configured?(decision+" · "+(status.model||person.role)):"API connection not configured";
-      copy.append(title,detail);
-      const state=document.createElement("span");state.className="setup-state"+(accepted?" ready":"");
-      state.textContent=!configured?"No API":({accept:"Accepted",decline:"Declined",conditional:"Conditional",abstain:"Abstained"}[decision]||"Not invited");
-      label.append(checkbox,copy,state);list.append(label);
-    });
-    renderMembers();
-  }catch(error){if(notice)notice.textContent=error.message;}
-  finally{button.disabled=false;button.textContent="✦ Invite connected AIs to decide";}
-}
-
-function welcomeMarkup(){
-  return '<div class="welcome" id="welcome"><div class="welcome-symbol">✳</div><div class="eyebrow">INDEPENDENT MINDS. ONE ROOM.</div><h2>Good conversations<br><span>start here.</span></h2><p>Bring a question, an idea, or a challenge. Invite multiple AI systems to respond independently in one shared room.</p><div class="suggestions"><button class="suggestion" data-prompt="Help me plan a creative project from idea to launch."><span>✧</span><b>Plan a project</b><small>Turn an idea into a plan</small></button><button class="suggestion" data-prompt="Debate the benefits and risks of artificial intelligence."><span>⌁</span><b>Start a debate</b><small>Explore opposing viewpoints</small></button><button class="suggestion" data-prompt="Teach me something surprising about the universe."><span>◉</span><b>Learn something</b><small>Explore a new question</small></button></div></div>';
-}
-function bindSuggestions(){document.querySelectorAll(".suggestion").forEach(button=>button.addEventListener("click",()=>sendMessage(button.dataset.prompt)));}
-function clearChat(){roomHistory=[];feed.innerHTML=welcomeMarkup();bindSuggestions();}
-document.querySelector(".demo-chip").addEventListener("click",openApiSetup);
+document.querySelector("#add-ai-reply")?.addEventListener("click",openReplyDialog);
+document.querySelector("#copy-prompt")?.addEventListener("click",async()=>{
+  const prompt=latestPrompt||input.value.trim();
+  if(!prompt){addLocalNotice("Write or send a prompt first, then copy it for your AI websites.");return;}
+  addLocalNotice(await copyText(prompt)?"Prompt copied. Paste it into each AI website you open.":"Clipboard access was blocked; copy the prompt directly from the room.");
+});
 form.addEventListener("submit",event=>{event.preventDefault();sendMessage(input.value);});
 input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();form.requestSubmit();}});
 input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,160)+"px";});
 document.querySelector("#clear").addEventListener("click",clearChat);
 document.querySelector("#new-chat").addEventListener("click",clearChat);
+document.querySelector("#invite-ais")?.addEventListener("click",async()=>{
+  const message=prompt("Write an invitation for another person to join the AI Council:", "You are invited to join our shared AI Council room.");
+  if(message===null)return;
+  try{await window.CouncilNetwork.invite(message);addLocalNotice("Room invitation broadcast.");}catch{addLocalNotice("Could not send the room invitation.");}
+});
 window.addEventListener("council-network-message",event=>{
-  const item=event.detail;
-  if(!item||!item.text)return;
+  const item=event.detail;if(!item||!item.text)return;
   const person=people.find(p=>p.id===item.participant);
   addMessage(item.name||"Network member",item.text,{remote:true,user:item.role==="human",live:item.role==="agent",person});
 });
-bindSuggestions();loadStatus();
-
 window.addEventListener("council-network-history-page",event=>{
-  const items=event.detail||[];
-  const button=document.querySelector("#load-older-messages");
-  const previousHeight=feed.scrollHeight;
+  const items=event.detail||[],button=document.querySelector("#load-older-messages"),previousHeight=feed.scrollHeight;
   items.slice().reverse().forEach(item=>{
-    const person=people.find(p=>p.id===item.participant);
-    const card=document.createElement("article");card.className="message"+(item.role==="human"?" user":"");
-    const head=document.createElement("div");head.className="message-head";
-    const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent=item.role==="human"?"Y":person?.mark||"?";
+    const person=people.find(p=>p.id===item.participant),card=document.createElement("article");card.className="message"+(item.role==="human"?" user":"");
+    const head=document.createElement("div");head.className="message-head";const avatar=document.createElement("span");avatar.className="message-avatar";avatar.textContent=item.role==="human"?"Y":person?.mark||"✦";
     avatar.style.background=item.role==="human"?"#e7c3a4":person?.color||"#29334a";avatar.style.color=item.role==="human"?"#38251d":person?.ink||"#fff";
     const label=document.createElement("span");label.className="message-name";label.textContent=item.name||"Network member";head.append(avatar,label);
-    const body=document.createElement("div");body.className="message-body";body.textContent=item.text||"";
-    card.append(head,body);if(button&&button.nextSibling)feed.insertBefore(card,button.nextSibling);else feed.prepend(card);
+    const body=document.createElement("div");body.className="message-body";body.textContent=item.text||"";card.append(head,body);
+    if(button&&button.nextSibling)feed.insertBefore(card,button.nextSibling);else feed.prepend(card);
   });
   feed.scrollTop=feed.scrollHeight-previousHeight;
 });
-
-
-// Installable Android app (Progressive Web App).
-let deferredInstallPrompt=null;
-const installButton=document.querySelector("#install-app");
+renderMembers();bindSuggestions();
+let deferredInstallPrompt=null;const installButton=document.querySelector("#install-app");
 if(installButton){
-  window.addEventListener("beforeinstallprompt",event=>{
-    event.preventDefault();
-    deferredInstallPrompt=event;
-    installButton.style.display="inline-block";
-  });
-  installButton.addEventListener("click",async()=>{
-    if(!deferredInstallPrompt){
-      installButton.style.display="none";
-      return;
-    }
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice.catch(()=>null);
-    deferredInstallPrompt=null;
-    installButton.style.display="none";
-  });
-  window.addEventListener("appinstalled",()=>{
-    deferredInstallPrompt=null;
-    installButton.style.display="none";
-  });
+  window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();deferredInstallPrompt=event;installButton.style.display="inline-block";});
+  installButton.addEventListener("click",async()=>{if(!deferredInstallPrompt){installButton.style.display="none";return;}deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice.catch(()=>null);deferredInstallPrompt=null;installButton.style.display="none";});
+  window.addEventListener("appinstalled",()=>{deferredInstallPrompt=null;installButton.style.display="none";});
 }
-if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(error=>{
-      console.warn("AI Council offline shell could not be registered:",error);
-    });
-  });
-}
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(error=>console.warn("AI Council offline shell could not be registered:",error)));
