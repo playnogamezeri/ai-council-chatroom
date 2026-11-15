@@ -4,7 +4,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 });
 
 const PROVIDERS = {
-  openai:   { name: "ChatGPT", env: "OPENAI_API_KEY", modelEnv: "OPENAI_MODEL", model: "gpt-4.1-mini", kind: "openai" },
+  openai:   { name: "ChatGPT", env: "OPENAI_API_KEY", modelEnv: "OPENAI_MODEL", model: "gpt-6-luna", kind: "openai" },
   gemini:   { name: "Gemini", env: "GEMINI_API_KEY", modelEnv: "GEMINI_MODEL", model: "gemini-3.8-flash", kind: "gemini" },
   deepseek: { name: "DeepSeek", env: "DEEPSEEK_API_KEY", modelEnv: "DEEPSEEK_MODEL", model: "deepseek-flash", kind: "openai", endpoint: "https://api.deepseek.com/chat/completions" },
   claude:   { name: "Claude", env: "ANTHROPIC_API_KEY", modelEnv: "ANTHROPIC_MODEL", model: "claude-haiku-5-5", kind: "anthropic" },
@@ -63,6 +63,7 @@ async function askOpenAICompatible(env, id, provider, message, history, councilC
       model: env[provider.modelEnv] || provider.model,
       messages,
       temperature: 0.7,
+      reasoning_effort: "none",
       max_tokens: 700,
       stream: false
     })
