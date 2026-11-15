@@ -1,6 +1,6 @@
 import http from "node:http";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, appendFile } from "node:fs/promises";
+import { mkdir, readFile, appendFile, stat, statfs } from "node:fs/promises";
 import { WebSocketServer, WebSocket } from "ws";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -84,10 +84,39 @@ async function loadHistory() {
 function pageMessages(url) {
   const limitValue = Number(url.searchParams.get("limit") || PAGE_SIZE_DEFAULT);
   const limit = Math.max(1, Math.min(PAGE_SIZE_MAX, Number.isFinite(limitValue) ? limitValue : PAGE_SIZE_DEFAULT));
-  const before = Number(url.searchParams.get("before") || Number.MAX_SAFE_INTEGER);
-  const eligible = messages.filter(m => m.createdAt < before);
+  const beforeRaw = url.searchParams.get("before");
+  const before = beforeRaw === null ? Number.MAX_SAFE_INTEGER : Number(beforeRaw);
+  const beforeId = url.searchParams.get("beforeId") || "";
+  const eligible = messages.filter(m =>
+    m.createdAt < before || (m.createdAt === before && beforeId && String(m.id) < beforeId)
+  );
   const page = eligible.slice(-limit);
-  return { messages: page, hasMore: eligible.length > page.length, nextBefore: page.length ? page[0].createdAt : null, totalMessages: messages.length };
+  return {
+    messages: page,
+    hasMore: eligible.length > page.length,
+    nextBefore: page.length ? page[0].createdAt : null,
+    nextBeforeId: page.length ? page[0].id : null,
+    totalMessages: messages.length
+  };
+}
+
+async function storageStats() {
+  let logBytes = 0;
+  try { logBytes = (await stat(EVENT_LOG)).size; }
+  catch (error) { if (error.code !== "ENOENT") throw error; }
+  const fs = await statfs(DATA_DIR);
+  const totalBytes = Number(fs.blocks) * Number(fs.bsize);
+  const freeBytes = Number(fs.bavail) * Number(fs.bsize);
+  return {
+    messageCount: messages.length,
+    eventLogBytes: logBytes,
+    eventLogMB: Math.round(logBytes / 1048576 * 100) / 100,
+    volumeTotalMB: Math.round(totalBytes / 1048576),
+    volumeFreeMB: Math.round(freeBytes / 1048576),
+    volumeUsedPercent: totalBytes ? Math.round((totalBytes - freeBytes) / totalBytes * 1000) / 10 : null,
+    cleanupAvailable: false,
+    note: "History is retained. Backup-before-cleanup is not yet enabled."
+  };
 }
 
 const server = http.createServer((req, res) => {
@@ -98,6 +127,11 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (url.pathname === "/health") {
     return json(res, 200, { ok: true, service: "ai-council-network", members: members.size, totalMessages: messages.length, persistence: "append-only-volume" }, origin || "*");
+  }
+  if (url.pathname === "/api/network/storage" && req.method === "GET") {
+    storageStats().then(data => json(res, 200, data, origin || "*"))
+      .catch(() => json(res, 503, { error: "Storage metrics are temporarily unavailable." }, origin || "*"));
+    return;
   }
   if (url.pathname === "/api/network/snapshot" && req.method === "GET") {
     const history = pageMessages(url);
